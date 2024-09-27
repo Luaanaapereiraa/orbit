@@ -1,5 +1,5 @@
 # pomodorodev
-# ... em contrução 
+# ... em contrução ... 
 <img src="https://img.shields.io/badge/Status-Under%20Construction-orange" alt="Under Construction">
 <p>Projeto de pomodoro para ajudar </p>
 <p>Devs com controle de tempo, </p>
