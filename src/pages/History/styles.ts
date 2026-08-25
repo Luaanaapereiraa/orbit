@@ -3,12 +3,51 @@ import styled from 'styled-components'
 export const HistoryContainer = styled.main`
   flex: 1;
   padding: 3.5rem;
-
   display: flex;
   flex-direction: column;
 
   h1 {
     font-size: 1.5rem;
+    color: ${(props) => props.theme['gray-100']};
+  }
+
+  @media (max-width: 768px) {
+    padding: 1.5rem 0 0;
+  }
+`
+
+export const HistoryHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  button {
+    border: 0;
+    background: transparent;
+    color: ${(props) => props.theme['gray-400']};
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: color 0.15s ease;
+
+    &:hover {
+      color: ${(props) => props.theme['red-500']};
+    }
+  }
+`
+
+export const EmptyHistory = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  color: ${(props) => props.theme['gray-400']};
+
+  p {
+    font-size: 1.125rem;
     color: ${(props) => props.theme['gray-100']};
   }
 `
