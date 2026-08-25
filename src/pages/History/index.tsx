@@ -28,7 +28,9 @@ export function History() {
       {orderedCycles.length === 0 ? (
         <EmptyHistory>
           <p>Nenhum ciclo registrado ainda.</p>
-          <span>Comece um pomodoro na página do timer para ver o histórico aqui.</span>
+          <span>
+            Comece um pomodoro na página do timer para ver o histórico aqui.
+          </span>
         </EmptyHistory>
       ) : (
         <HistoryList>
@@ -55,15 +57,15 @@ export function History() {
                     </td>
                     <td>
                       {cycle.finishedDate && (
-                        <Status statusColor="green">Concluído</Status>
+                        <Status $statusColor="green">Concluído</Status>
                       )}
 
                       {cycle.interruptedDate && (
-                        <Status statusColor="red">Interrompido</Status>
+                        <Status $statusColor="red">Interrompido</Status>
                       )}
 
                       {!cycle.finishedDate && !cycle.interruptedDate && (
-                        <Status statusColor="yellow">Em andamento</Status>
+                        <Status $statusColor="yellow">Em andamento</Status>
                       )}
                     </td>
                   </tr>

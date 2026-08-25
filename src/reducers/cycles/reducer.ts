@@ -12,18 +12,21 @@ export interface CyclesState {
   activeCycleId: string | null
 }
 
-export enum ActionTypes {
-  ADD_NEW_CYCLE = 'ADD_NEW_CYCLE',
-  INTERRUPT_CURRENT_CYCLE = 'INTERRUPT_CURRENT_CYCLE',
-  MARK_CURRENT_CYCLE_AS_FINISHED = 'MARK_CURRENT_CYCLE_AS_FINISHED',
-  CLEAR_HISTORY = 'CLEAR_HISTORY',
-}
+export const ActionTypes = {
+  ADD_NEW_CYCLE: 'ADD_NEW_CYCLE',
+  INTERRUPT_CURRENT_CYCLE: 'INTERRUPT_CURRENT_CYCLE',
+  MARK_CURRENT_CYCLE_AS_FINISHED: 'MARK_CURRENT_CYCLE_AS_FINISHED',
+  CLEAR_HISTORY: 'CLEAR_HISTORY',
+} as const
 
 export type CyclesAction =
-  | { type: ActionTypes.ADD_NEW_CYCLE; payload: { newCycle: Cycle } }
-  | { type: ActionTypes.INTERRUPT_CURRENT_CYCLE }
-  | { type: ActionTypes.MARK_CURRENT_CYCLE_AS_FINISHED }
-  | { type: ActionTypes.CLEAR_HISTORY }
+  | {
+      type: typeof ActionTypes.ADD_NEW_CYCLE
+      payload: { newCycle: Cycle }
+    }
+  | { type: typeof ActionTypes.INTERRUPT_CURRENT_CYCLE }
+  | { type: typeof ActionTypes.MARK_CURRENT_CYCLE_AS_FINISHED }
+  | { type: typeof ActionTypes.CLEAR_HISTORY }
 
 export function cyclesReducer(state: CyclesState, action: CyclesAction) {
   switch (action.type) {
@@ -71,7 +74,9 @@ export function cyclesReducer(state: CyclesState, action: CyclesAction) {
     case ActionTypes.CLEAR_HISTORY:
       return {
         ...state,
-        cycles: state.cycles.filter((cycle) => cycle.id === state.activeCycleId),
+        cycles: state.cycles.filter(
+          (cycle) => cycle.id === state.activeCycleId,
+        ),
       }
 
     default:

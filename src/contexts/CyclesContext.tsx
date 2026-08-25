@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   ReactNode,
   createContext,
@@ -95,22 +96,21 @@ export function CyclesContextProvider({
       return
     }
 
+    const cycleStartDate = new Date(cycle.startDate)
+    const cycleTask = cycle.task
     const totalSeconds = cycle.minutesAmount * 60
     let intervalId: number | undefined
     let finished = false
 
     function updateCountdown() {
-      const secondsDifference = differenceInSeconds(
-        new Date(),
-        new Date(cycle.startDate),
-      )
+      const secondsDifference = differenceInSeconds(new Date(), cycleStartDate)
 
       if (secondsDifference >= totalSeconds) {
         finished = true
         dispatch(markCurrentCycleAsFinishedAction())
         setAmountSecondsPassed(totalSeconds)
         playFinishSound()
-        notifyCycleFinished(cycle.task)
+        notifyCycleFinished(cycleTask)
         document.title = 'Pomodoro Dev'
         if (intervalId) {
           window.clearInterval(intervalId)
@@ -123,7 +123,7 @@ export function CyclesContextProvider({
       const currentSeconds = totalSeconds - secondsDifference
       const minutes = String(Math.floor(currentSeconds / 60)).padStart(2, '0')
       const seconds = String(currentSeconds % 60).padStart(2, '0')
-      document.title = `${minutes}:${seconds} • ${cycle.task}`
+      document.title = `${minutes}:${seconds} • ${cycleTask}`
     }
 
     updateCountdown()

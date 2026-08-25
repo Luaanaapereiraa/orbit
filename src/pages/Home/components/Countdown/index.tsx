@@ -27,7 +27,10 @@ export function Countdown() {
 
   return (
     <CountdownWrapper>
-      <CountdownContainer aria-live="polite" aria-label={`${minutes}:${seconds}`}>
+      <CountdownContainer
+        aria-live="polite"
+        aria-label={`${minutes}:${seconds}`}
+      >
         <span>{minutes[0]}</span>
         <span>{minutes[1]}</span>
         <Separator>:</Separator>

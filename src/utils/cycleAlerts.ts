@@ -66,9 +66,14 @@ export function notifyCycleFinished(task: string) {
     return
   }
 
-  new Notification('Pomodoro concluído', {
+  const notification = new Notification('Pomodoro concluído', {
     body: `A tarefa “${task}” foi finalizada. Hora de uma pausa!`,
   })
+
+  notification.onclick = () => {
+    window.focus()
+    notification.close()
+  }
 }
 
 export function requestNotificationPermission() {
