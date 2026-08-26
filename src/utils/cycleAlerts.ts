@@ -61,14 +61,23 @@ export function playFinishSound() {
   })
 }
 
-export function notifyCycleFinished(task: string) {
+export function notifyCycleFinished(
+  task: string,
+  type: 'focus' | 'shortBreak' | 'longBreak' = 'focus',
+) {
   if (!('Notification' in window) || Notification.permission !== 'granted') {
     return
   }
 
-  const notification = new Notification('Pomodoro concluído', {
-    body: `A tarefa “${task}” foi finalizada. Hora de uma pausa!`,
-  })
+  const isFocus = type === 'focus'
+  const notification = new Notification(
+    isFocus ? 'Foco concluído' : 'Pausa concluída',
+    {
+      body: isFocus
+        ? `A tarefa “${task}” foi finalizada. Hora de uma pausa!`
+        : 'Pausa encerrada. Bora focar de novo?',
+    },
+  )
 
   notification.onclick = () => {
     window.focus()
