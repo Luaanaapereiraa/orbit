@@ -19,4 +19,5 @@ Os dados ficam salvos no navegador.
 ```bash
 npm install
 npm run dev
+npm test
 ```

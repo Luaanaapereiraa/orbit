@@ -43,6 +43,7 @@ export function TaskPanel() {
           type="submit"
           className="h-11 w-11 px-0"
           disabled={!name.trim()}
+          aria-label="Adicionar tarefa"
         >
           <Plus size={18} />
         </Button>
