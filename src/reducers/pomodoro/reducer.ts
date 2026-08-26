@@ -140,10 +140,7 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
     case ActionTypes.SELECT_TASK:
       return {
         ...state,
-        selectedTaskId:
-          state.selectedTaskId === action.payload.taskId
-            ? null
-            : action.payload.taskId,
+        selectedTaskId: action.payload.taskId,
       }
 
     case ActionTypes.DELETE_TASK:
