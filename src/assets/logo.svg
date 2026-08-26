@@ -1,15 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Pomodoro Dev">
-  <circle cx="32" cy="38" r="20" fill="#AB222E" />
-  <circle cx="24" cy="30" r="8" fill="#ffffff" fill-opacity="0.18" />
-  <ellipse cx="32" cy="16" rx="9" ry="4.5" fill="#015F43" />
-  <path
-    d="M32 16c1-6 8-9 12-8"
-    stroke="#00B37E"
-    stroke-width="3"
-    stroke-linecap="round"
-  />
-  <circle cx="32" cy="38" r="12" stroke="#E1E1E6" stroke-width="2" fill="none" />
-  <circle cx="32" cy="38" r="2.5" fill="#E1E1E6" />
-  <path d="M32 38v-7" stroke="#E1E1E6" stroke-width="2.5" stroke-linecap="round" />
-  <path d="M32 38l6 4" stroke="#FBA94C" stroke-width="2.5" stroke-linecap="round" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Orbit">
+  <rect width="64" height="64" rx="14" fill="#0b1220"/>
+  <circle cx="32" cy="38" r="18" fill="#0f766e"/>
+  <ellipse cx="32" cy="18" rx="8" ry="4" fill="#0d9488"/>
+  <path d="M32 16c1-6 8-9 12-8" stroke="#5eead4" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="38" r="9" fill="#121a2c"/>
+  <circle cx="32" cy="38" r="7.5" fill="#e8edf5"/>
+  <circle cx="32" cy="38" r="1.6" fill="#0b1220"/>
+  <path d="M32 38v-7" stroke="#0b1220" stroke-width="2" stroke-linecap="round"/>
+  <path d="M32 38l4.5 3" stroke="#c67c2e" stroke-width="2.5" stroke-linecap="round"/>
 </svg>
