@@ -10,26 +10,7 @@ import ptBR from 'date-fns/locale/pt-BR'
 import { useMemo } from 'react'
 import { usePomodoro } from '../../contexts/PomodoroContext'
 import { Card } from '../../components/ui/Card'
-import { Cycle } from '../../reducers/pomodoro/types'
-import { getElapsedSeconds } from '../../lib/time'
-
-function focusedMinutesOf(cycle: Cycle) {
-  if (cycle.type !== 'focus') {
-    return 0
-  }
-
-  if (cycle.finishedDate) {
-    return cycle.minutesAmount
-  }
-
-  if (cycle.interruptedDate) {
-    return Math.round(
-      getElapsedSeconds(cycle, new Date(cycle.interruptedDate).getTime()) / 60,
-    )
-  }
-
-  return 0
-}
+import { focusedMinutesOf } from '../../lib/stats'
 
 export function Stats() {
   const { cycles } = usePomodoro()

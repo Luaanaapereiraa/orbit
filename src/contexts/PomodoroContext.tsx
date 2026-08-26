@@ -22,18 +22,13 @@ import {
   updateSettingsAction,
 } from '../reducers/pomodoro/actions'
 import { pomodoroReducer } from '../reducers/pomodoro/reducer'
-import {
-  Cycle,
-  CycleType,
-  Settings,
-  Task,
-  initialPomodoroState,
-} from '../reducers/pomodoro/types'
+import { Cycle, Settings, Task, initialPomodoroState } from '../reducers/pomodoro/types'
 import {
   applyThemeClass,
   loadPomodoroState,
   persistPomodoroState,
 } from '../lib/storage'
+import { getNextBreakType } from '../lib/cycleFlow'
 import { formatClock, getElapsedSeconds } from '../lib/time'
 import {
   notifyCycleFinished,
@@ -66,21 +61,6 @@ export const PomodoroContext = createContext({} as PomodoroContextType)
 
 interface PomodoroProviderProps {
   children: ReactNode
-}
-
-function getNextBreakType(
-  cycles: Cycle[],
-  cyclesUntilLongBreak: number,
-): CycleType {
-  const completedFocus = cycles.filter(
-    (cycle) => cycle.type === 'focus' && cycle.finishedDate,
-  ).length
-
-  if (cyclesUntilLongBreak > 0 && completedFocus % cyclesUntilLongBreak === 0) {
-    return 'longBreak'
-  }
-
-  return 'shortBreak'
 }
 
 export function PomodoroProvider({ children }: PomodoroProviderProps) {
