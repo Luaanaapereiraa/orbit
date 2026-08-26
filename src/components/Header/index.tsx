@@ -1,7 +1,8 @@
 import { ChartBar, Gear, Moon, Scroll, Sun, Timer } from 'phosphor-react'
 import { NavLink } from 'react-router-dom'
-import logoPomodoroDev from '../../assets/logo.svg'
+import logoOrbit from '../../assets/logo.svg'
 import { usePomodoro } from '../../contexts/PomodoroContext'
+import { APP_NAME, APP_TAGLINE } from '../../lib/brand'
 import { cn } from '../../lib/cn'
 
 const links = [
@@ -18,13 +19,13 @@ export function Header() {
   return (
     <header className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-3">
-        <img src={logoPomodoroDev} alt="Pomodoro Dev" className="h-10 w-10" />
+        <img src={logoOrbit} alt={APP_NAME} className="h-10 w-10" />
         <div className="hidden sm:block">
           <strong className="block text-sm font-bold text-ink dark:text-ink-dark">
-            Pomodoro Dev
+            {APP_NAME}
           </strong>
           <span className="text-xs text-muted dark:text-muted-dark">
-            Foque em ciclos
+            {APP_TAGLINE}
           </span>
         </div>
       </div>

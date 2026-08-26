@@ -1,8 +1,8 @@
-# Pomodoro Dev
+# Orbit
 
-Timer pomodoro para ajudar a manter o foco em ciclos de trabalho, com pausas, tarefas, estatísticas e modo claro/escuro.
+Timer de ciclos de foco para qualquer área de tech: produto, design, dados, engenharia, QA e mais.
 
-Feito com React, TypeScript, Vite e Tailwind CSS. Pode ser instalado como app (PWA) e funciona offline depois do primeiro acesso.
+Pausas, tarefas, estatísticas e tema claro/escuro. Feito com React, TypeScript, Vite e Tailwind CSS. Pode ser instalado como app (PWA) e funciona offline depois do primeiro acesso.
 
 ## Como usar
 

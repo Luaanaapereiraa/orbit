@@ -15,9 +15,10 @@ export default defineConfig({
         enabled: true,
       },
       manifest: {
-        name: 'Pomodoro Dev',
-        short_name: 'Pomodoro',
-        description: 'Timer pomodoro para ajudar a manter o foco',
+        name: 'Orbit',
+        short_name: 'Orbit',
+        description:
+          'Timer de ciclos de foco para produto, design, dados e engenharia',
         theme_color: '#0b1220',
         background_color: '#0b1220',
         display: 'standalone',

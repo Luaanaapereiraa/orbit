@@ -28,6 +28,7 @@ import {
   loadPomodoroState,
   persistPomodoroState,
 } from '../lib/storage'
+import { APP_NAME } from '../lib/brand'
 import { getNextBreakType } from '../lib/cycleFlow'
 import { formatClock, getElapsedSeconds } from '../lib/time'
 import {
@@ -92,7 +93,7 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
 
   useEffect(() => {
     if (!activeCycle) {
-      document.title = 'Pomodoro Dev'
+      document.title = APP_NAME
       setAmountSecondsPassed(0)
       return
     }
@@ -103,7 +104,7 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
       const elapsed = getElapsedSeconds(cycle)
       setAmountSecondsPassed(elapsed)
       const remaining = Math.max(cycle.minutesAmount * 60 - elapsed, 0)
-      document.title = `⏸ ${formatClock(remaining)} • Pomodoro Dev`
+      document.title = `⏸ ${formatClock(remaining)} • ${APP_NAME}`
       return
     }
 
@@ -163,7 +164,7 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
 
       setAmountSecondsPassed(elapsed)
       const remaining = Math.max(totalSeconds - elapsed, 0)
-      const label = cycle.task || 'Pomodoro Dev'
+      const label = cycle.task || APP_NAME
       document.title = `${formatClock(remaining)} • ${label}`
     }
 

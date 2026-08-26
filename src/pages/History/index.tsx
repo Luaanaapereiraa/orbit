@@ -70,7 +70,7 @@ export function History() {
             Nenhum ciclo registrado ainda.
           </p>
           <span className="mt-1 text-sm text-muted dark:text-muted-dark">
-            Comece um pomodoro na página do timer para ver o histórico aqui.
+            Comece um ciclo na página do timer para ver o histórico aqui.
           </span>
         </Card>
       ) : (
