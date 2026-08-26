@@ -33,7 +33,9 @@ describe('Home', () => {
     )
     await user.click(screen.getByRole('button', { name: /adicionar tarefa/i }))
 
-    expect(screen.getByText('Estudar testes')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Estudar testes' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /começar/i })).toBeEnabled()
   })
 })

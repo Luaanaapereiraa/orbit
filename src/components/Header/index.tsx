@@ -20,10 +20,12 @@ export function Header() {
       <div className="flex items-center gap-3">
         <img src={logoPomodoroDev} alt="Pomodoro Dev" className="h-10 w-10" />
         <div className="hidden sm:block">
-          <strong className="block text-sm font-bold text-zinc-900 dark:text-zinc-100">
+          <strong className="block text-sm font-bold text-ink dark:text-ink-dark">
             Pomodoro Dev
           </strong>
-          <span className="text-xs text-zinc-500">Foque em ciclos</span>
+          <span className="text-xs text-muted dark:text-muted-dark">
+            Foque em ciclos
+          </span>
         </div>
       </div>
 
@@ -36,8 +38,8 @@ export function Header() {
             title={link.title}
             className={({ isActive }) =>
               cn(
-                'flex h-11 w-11 items-center justify-center rounded-xl text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100',
-                isActive && 'bg-emerald-500/15 text-emerald-500',
+                'flex h-11 w-11 items-center justify-center rounded-xl text-muted transition hover:bg-line hover:text-ink dark:text-muted-dark dark:hover:bg-line-dark dark:hover:text-ink-dark',
+                isActive && 'bg-brand/15 text-brand-strong',
               )
             }
           >
@@ -49,7 +51,7 @@ export function Header() {
       <button
         type="button"
         onClick={() => updateSettings({ theme: isDark ? 'light' : 'dark' })}
-        className="flex h-11 w-11 items-center justify-center rounded-xl text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+        className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition hover:bg-line hover:text-ink dark:text-muted-dark dark:hover:bg-line-dark dark:hover:text-ink-dark"
         aria-label={isDark ? 'Ativar tema claro' : 'Ativar tema escuro'}
       >
         {isDark ? <Sun size={20} /> : <Moon size={20} />}
@@ -60,7 +62,7 @@ export function Header() {
 
 export function BottomNav() {
   return (
-    <nav className="fixed right-4 bottom-4 left-4 z-20 flex items-center justify-around rounded-2xl border border-zinc-200 bg-white/90 p-2 shadow-lg backdrop-blur md:hidden dark:border-zinc-800 dark:bg-zinc-900/90">
+    <nav className="fixed right-4 bottom-4 left-4 z-20 flex items-center justify-around rounded-2xl border border-line bg-panel/90 p-2 shadow-lg backdrop-blur md:hidden dark:border-line-dark dark:bg-panel-dark/90">
       {links.map((link) => (
         <NavLink
           key={link.to}
@@ -69,8 +71,8 @@ export function BottomNav() {
           title={link.title}
           className={({ isActive }) =>
             cn(
-              'flex h-11 w-11 items-center justify-center rounded-xl text-zinc-500',
-              isActive && 'bg-emerald-500/15 text-emerald-500',
+              'flex h-11 w-11 items-center justify-center rounded-xl text-muted dark:text-muted-dark',
+              isActive && 'bg-brand/15 text-brand-strong',
             )
           }
         >

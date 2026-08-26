@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { Button } from '../components/ui/Button'
-import { Toggle } from '../components/ui/Toggle'
+import { Button } from './Button'
+import { Toggle } from './Toggle'
 
 describe('Button', () => {
   it('renders the label and can be disabled', () => {

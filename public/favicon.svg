@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#121214"/>
-  <circle cx="32" cy="38" r="18" fill="#C62828"/>
-  <ellipse cx="32" cy="18" rx="8" ry="4" fill="#015F43"/>
-  <path d="M32 18c1-5 7-8 11-7" stroke="#00B37E" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <circle cx="32" cy="38" r="9" fill="#1A1A1E"/>
-  <circle cx="32" cy="38" r="7.5" fill="#E8E6E1"/>
-  <circle cx="32" cy="38" r="1.6" fill="#121214"/>
-  <path d="M32 38V32" stroke="#121214" stroke-width="2" stroke-linecap="round"/>
-  <path d="M32 38l4.5 3" stroke="#FBA94C" stroke-width="2" stroke-linecap="round"/>
+  <rect width="64" height="64" rx="14" fill="#0b1220"/>
+  <circle cx="32" cy="38" r="18" fill="#0f766e"/>
+  <ellipse cx="32" cy="18" rx="8" ry="4" fill="#0d9488"/>
+  <path d="M32 18c1-5 7-8 11-7" stroke="#5eead4" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <circle cx="32" cy="38" r="9" fill="#121a2c"/>
+  <circle cx="32" cy="38" r="7.5" fill="#e8edf5"/>
+  <circle cx="32" cy="38" r="1.6" fill="#0b1220"/>
+  <path d="M32 38V32" stroke="#0b1220" stroke-width="2" stroke-linecap="round"/>
+  <path d="M32 38l4.5 3" stroke="#c67c2e" stroke-width="2" stroke-linecap="round"/>
 </svg>

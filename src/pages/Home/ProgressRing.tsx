@@ -2,15 +2,15 @@ import { CycleType } from '../../reducers/pomodoro/types'
 import { cn } from '../../lib/cn'
 
 const typeStyles: Record<CycleType, string> = {
-  focus: 'text-emerald-500',
-  shortBreak: 'text-sky-500',
-  longBreak: 'text-violet-500',
+  focus: 'text-focus',
+  shortBreak: 'text-rest',
+  longBreak: 'text-rest-long',
 }
 
 const typeStroke: Record<CycleType, string> = {
-  focus: 'stroke-emerald-500',
-  shortBreak: 'stroke-sky-500',
-  longBreak: 'stroke-violet-500',
+  focus: 'stroke-focus',
+  shortBreak: 'stroke-rest',
+  longBreak: 'stroke-rest-long',
 }
 
 interface ProgressRingProps {
@@ -49,7 +49,7 @@ export function ProgressRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          className="stroke-zinc-200 dark:stroke-zinc-800"
+          className="stroke-line dark:stroke-line-dark"
           strokeWidth={stroke}
         />
         <circle
@@ -76,7 +76,7 @@ export function ProgressRing({
         >
           {timeLabel}
         </strong>
-        <span className="mt-2 text-sm text-zinc-500">
+        <span className="mt-2 text-sm text-muted dark:text-muted-dark">
           {paused ? 'Pausado' : caption}
         </span>
       </div>

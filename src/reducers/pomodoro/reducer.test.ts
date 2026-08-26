@@ -10,9 +10,9 @@ import {
   resumeCurrentCycleAction,
   selectTaskAction,
   updateSettingsAction,
-} from '../reducers/pomodoro/actions'
-import { pomodoroReducer } from '../reducers/pomodoro/reducer'
-import { makeCycle, makeState } from '../test/factories'
+} from './actions'
+import { pomodoroReducer } from './reducer'
+import { makeCycle, makeState } from '../../test/factories'
 
 describe('pomodoroReducer', () => {
   beforeEach(() => {

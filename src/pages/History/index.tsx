@@ -36,7 +36,7 @@ export function History() {
   return (
     <div className="flex h-full flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+        <h1 className="text-2xl font-bold text-ink dark:text-ink-dark">
           Meu histórico
         </h1>
         {hasPastCycles && (
@@ -55,8 +55,8 @@ export function History() {
             className={cn(
               'rounded-full px-3 py-1 text-sm font-medium',
               filter === item.id
-                ? 'bg-emerald-500 text-white'
-                : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
+                ? 'bg-brand text-white'
+                : 'bg-line text-muted dark:bg-line-dark dark:text-muted-dark',
             )}
           >
             {item.label}
@@ -66,17 +66,17 @@ export function History() {
 
       {visibleCycles.length === 0 ? (
         <Card className="flex flex-1 flex-col items-center justify-center text-center">
-          <p className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+          <p className="text-lg font-medium text-ink dark:text-ink-dark">
             Nenhum ciclo registrado ainda.
           </p>
-          <span className="mt-1 text-sm text-zinc-500">
+          <span className="mt-1 text-sm text-muted dark:text-muted-dark">
             Comece um pomodoro na página do timer para ver o histórico aqui.
           </span>
         </Card>
       ) : (
         <Card className="overflow-auto p-0">
           <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
-            <thead className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+            <thead className="bg-canvas text-muted dark:bg-canvas-dark dark:text-muted-dark">
               <tr>
                 <th className="px-6 py-3 font-medium">Tarefa</th>
                 <th className="px-4 py-3 font-medium">Tipo</th>
@@ -89,18 +89,18 @@ export function History() {
               {visibleCycles.map((cycle) => (
                 <tr
                   key={cycle.id}
-                  className="border-t border-zinc-100 dark:border-zinc-800"
+                  className="border-t border-line dark:border-line-dark"
                 >
-                  <td className="px-6 py-3 text-zinc-900 dark:text-zinc-100">
+                  <td className="px-6 py-3 text-ink dark:text-ink-dark">
                     {cycle.task || '—'}
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">
+                  <td className="px-4 py-3 text-muted dark:text-muted-dark">
                     {typeLabels[cycle.type]}
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">
+                  <td className="px-4 py-3 text-muted dark:text-muted-dark">
                     {cycle.minutesAmount} min
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">
+                  <td className="px-4 py-3 text-muted dark:text-muted-dark">
                     {formatDistanceToNow(new Date(cycle.startDate), {
                       addSuffix: true,
                       locale: ptBR,
@@ -129,23 +129,23 @@ function Status({
   }
 }) {
   if (cycle.finishedDate) {
-    return <StatusDot color="bg-emerald-500" label="Concluído" />
+    return <StatusDot color="bg-focus" label="Concluído" />
   }
 
   if (cycle.interruptedDate) {
-    return <StatusDot color="bg-red-500" label="Interrompido" />
+    return <StatusDot color="bg-danger" label="Interrompido" />
   }
 
   if (cycle.pausedAt) {
-    return <StatusDot color="bg-amber-500" label="Pausado" />
+    return <StatusDot color="bg-rest" label="Pausado" />
   }
 
-  return <StatusDot color="bg-amber-400" label="Em andamento" />
+  return <StatusDot color="bg-rest-long" label="Em andamento" />
 }
 
 function StatusDot({ color, label }: { color: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-2 text-zinc-700 dark:text-zinc-200">
+    <span className="inline-flex items-center gap-2 text-ink dark:text-ink-dark">
       <span className={cn('h-2 w-2 rounded-full', color)} />
       {label}
     </span>

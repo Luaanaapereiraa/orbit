@@ -49,7 +49,7 @@ export function Home() {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <Card className="flex flex-col items-center justify-center gap-6 py-10">
-        <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold tracking-wide uppercase dark:bg-zinc-800">
+        <span className="rounded-full bg-line px-3 py-1 text-xs font-bold tracking-wide uppercase dark:bg-line-dark">
           {typeLabels[type]}
         </span>
 
@@ -65,7 +65,7 @@ export function Home() {
           paused={isPaused}
         />
 
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted dark:text-muted-dark">
           {untilLong > 0
             ? `${Math.min(
                 focusInSet,

@@ -7,12 +7,12 @@ export function Settings() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+      <h1 className="text-2xl font-bold text-ink dark:text-ink-dark">
         Configurações
       </h1>
 
       <Card className="space-y-5">
-        <h2 className="font-bold text-zinc-900 dark:text-zinc-100">Durações</h2>
+        <h2 className="font-bold text-ink dark:text-ink-dark">Durações</h2>
         <NumberField
           label="Foco (minutos)"
           value={settings.focusMinutes}
@@ -48,7 +48,7 @@ export function Settings() {
       </Card>
 
       <Card className="space-y-2">
-        <h2 className="mb-2 font-bold text-zinc-900 dark:text-zinc-100">
+        <h2 className="mb-2 font-bold text-ink dark:text-ink-dark">
           Preferências
         </h2>
         <Toggle
@@ -103,7 +103,7 @@ function NumberField({
 }) {
   return (
     <label className="flex flex-col gap-2">
-      <span className="flex items-center justify-between text-sm font-medium text-zinc-700 dark:text-zinc-200">
+      <span className="flex items-center justify-between text-sm font-medium text-ink dark:text-ink-dark">
         {label}
         <strong>{value}</strong>
       </span>
@@ -113,7 +113,7 @@ function NumberField({
         max={max}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="accent-emerald-500"
+        className="accent-brand"
       />
     </label>
   )

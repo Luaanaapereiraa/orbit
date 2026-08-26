@@ -18,13 +18,13 @@ export function Toggle({ checked, label, className, ...props }: ToggleProps) {
       )}
       {...props}
     >
-      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+      <span className="text-sm font-medium text-ink dark:text-ink-dark">
         {label}
       </span>
       <span
         className={cn(
           'relative h-6 w-11 rounded-full transition',
-          checked ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700',
+          checked ? 'bg-brand-strong' : 'bg-line dark:bg-line-dark',
         )}
       >
         <span

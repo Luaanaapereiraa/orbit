@@ -3,12 +3,13 @@ import { cn } from '../../lib/cn'
 
 const variants = {
   primary:
-    'bg-emerald-600 text-white hover:bg-emerald-500 disabled:hover:bg-emerald-600',
-  danger: 'bg-red-600 text-white hover:bg-red-500 disabled:hover:bg-red-600',
+    'bg-brand text-white hover:bg-brand-strong disabled:hover:bg-brand',
+  danger:
+    'bg-danger text-white hover:bg-red-500 disabled:hover:bg-danger',
   secondary:
-    'bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700',
+    'bg-line text-ink hover:bg-canvas dark:bg-line-dark dark:text-ink-dark dark:hover:bg-canvas-dark',
   ghost:
-    'bg-transparent text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100',
+    'bg-transparent text-muted hover:bg-line hover:text-ink dark:text-muted-dark dark:hover:bg-line-dark dark:hover:text-ink-dark',
 }
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

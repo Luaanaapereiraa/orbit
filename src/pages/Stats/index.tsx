@@ -55,7 +55,7 @@ export function Stats() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+      <h1 className="text-2xl font-bold text-ink dark:text-ink-dark">
         Estatísticas
       </h1>
 
@@ -70,7 +70,7 @@ export function Stats() {
       </div>
 
       <Card>
-        <h2 className="mb-6 font-bold text-zinc-900 dark:text-zinc-100">
+        <h2 className="mb-6 font-bold text-ink dark:text-ink-dark">
           Minutos por dia
         </h2>
         <div className="flex h-48 items-end gap-3">
@@ -79,9 +79,9 @@ export function Stats() {
               key={bar.label}
               className="flex flex-1 flex-col items-center gap-2"
             >
-              <div className="flex h-36 w-full items-end rounded-xl bg-zinc-100 dark:bg-zinc-800">
+              <div className="flex h-36 w-full items-end rounded-xl bg-canvas dark:bg-canvas-dark">
                 <div
-                  className="w-full rounded-xl bg-emerald-500"
+                  className="w-full rounded-xl bg-brand"
                   style={{
                     height: `${Math.max(
                       (bar.minutes / maxMinutes) * 100,
@@ -91,7 +91,7 @@ export function Stats() {
                   title={`${bar.minutes} min`}
                 />
               </div>
-              <span className="text-xs font-medium uppercase text-zinc-500">
+              <span className="text-xs font-medium uppercase text-muted dark:text-muted-dark">
                 {bar.label}
               </span>
             </div>
@@ -113,11 +113,13 @@ function StatCard({
 }) {
   return (
     <Card>
-      <p className="text-sm text-zinc-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+      <p className="text-sm text-muted dark:text-muted-dark">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-ink dark:text-ink-dark">
         {value}
       </p>
-      {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
+      {hint && (
+        <p className="mt-1 text-xs text-muted dark:text-muted-dark">{hint}</p>
+      )}
     </Card>
   )
 }
