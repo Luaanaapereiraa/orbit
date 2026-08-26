@@ -41,7 +41,10 @@ export function Home() {
     (cycle) => cycle.type === 'focus' && cycle.finishedDate,
   ).length
   const untilLong = settings.cyclesUntilLongBreak
-  const focusInSet = untilLong > 0 ? (completedFocus % untilLong) + (activeCycle?.type === 'focus' ? 1 : 0) : 0
+  const focusInSet =
+    untilLong > 0
+      ? (completedFocus % untilLong) + (activeCycle?.type === 'focus' ? 1 : 0)
+      : 0
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -64,7 +67,10 @@ export function Home() {
 
         <p className="text-sm text-zinc-500">
           {untilLong > 0
-            ? `${Math.min(focusInSet, untilLong)} / ${untilLong} ciclos até a pausa longa`
+            ? `${Math.min(
+                focusInSet,
+                untilLong,
+              )} / ${untilLong} ciclos até a pausa longa`
             : 'Pausa longa desativada'}
         </p>
 

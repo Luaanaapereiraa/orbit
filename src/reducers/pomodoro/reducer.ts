@@ -1,12 +1,23 @@
-import {
-  ActionTypes,
-  PomodoroAction,
-  PomodoroState,
-} from './types'
+import { Cycle, ActionTypes, PomodoroAction, PomodoroState } from './types'
+
+function settlePause(cycle: Cycle): Cycle {
+  if (!cycle.pausedAt) {
+    return cycle
+  }
+
+  return {
+    ...cycle,
+    pausedMs:
+      cycle.pausedMs + (Date.now() - new Date(cycle.pausedAt).getTime()),
+    pausedAt: undefined,
+  }
+}
 
 function patchActiveCycle(
   state: PomodoroState,
-  patch: (cycle: PomodoroState['cycles'][number]) => PomodoroState['cycles'][number],
+  patch: (
+    cycle: PomodoroState['cycles'][number],
+  ) => PomodoroState['cycles'][number],
 ) {
   if (!state.activeCycleId) {
     return state
@@ -30,9 +41,8 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
           !cycle.interruptedDate
         ) {
           return {
-            ...cycle,
+            ...settlePause(cycle),
             interruptedDate: new Date(),
-            pausedAt: undefined,
           }
         }
 
@@ -56,9 +66,8 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
         cycles: state.cycles.map((cycle) => {
           if (cycle.id === state.activeCycleId) {
             return {
-              ...cycle,
+              ...settlePause(cycle),
               interruptedDate: new Date(),
-              pausedAt: undefined,
             }
           }
 
@@ -76,9 +85,8 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
       const cycles = state.cycles.map((cycle) => {
         if (cycle.id === state.activeCycleId) {
           return {
-            ...cycle,
+            ...settlePause(cycle),
             finishedDate: new Date(),
-            pausedAt: undefined,
           }
         }
 
@@ -127,7 +135,9 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
     case ActionTypes.CLEAR_HISTORY:
       return {
         ...state,
-        cycles: state.cycles.filter((cycle) => cycle.id === state.activeCycleId),
+        cycles: state.cycles.filter(
+          (cycle) => cycle.id === state.activeCycleId,
+        ),
       }
 
     case ActionTypes.ADD_TASK:

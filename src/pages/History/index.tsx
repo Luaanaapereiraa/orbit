@@ -24,13 +24,12 @@ export function History() {
   )
   const hasPastCycles = cycles.some((cycle) => cycle.id !== activeCycleId)
   const filters = useMemo(
-    () =>
-      [
-        { id: 'all' as const, label: 'Todos' },
-        { id: 'focus' as const, label: 'Foco' },
-        { id: 'shortBreak' as const, label: 'Pausa curta' },
-        { id: 'longBreak' as const, label: 'Pausa longa' },
-      ],
+    () => [
+      { id: 'all' as const, label: 'Todos' },
+      { id: 'focus' as const, label: 'Foco' },
+      { id: 'shortBreak' as const, label: 'Pausa curta' },
+      { id: 'longBreak' as const, label: 'Pausa longa' },
+    ],
     [],
   )
 

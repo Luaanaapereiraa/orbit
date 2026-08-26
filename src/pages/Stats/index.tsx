@@ -23,7 +23,9 @@ function focusedMinutesOf(cycle: Cycle) {
   }
 
   if (cycle.interruptedDate) {
-    return Math.round(getElapsedSeconds(cycle, new Date(cycle.interruptedDate).getTime()) / 60)
+    return Math.round(
+      getElapsedSeconds(cycle, new Date(cycle.interruptedDate).getTime()) / 60,
+    )
   }
 
   return 0
@@ -37,7 +39,9 @@ export function Stats() {
 
   const focusCycles = cycles.filter((cycle) => cycle.type === 'focus')
   const completed = focusCycles.filter((cycle) => cycle.finishedDate).length
-  const interrupted = focusCycles.filter((cycle) => cycle.interruptedDate).length
+  const interrupted = focusCycles.filter(
+    (cycle) => cycle.interruptedDate,
+  ).length
 
   const minutesToday = focusCycles
     .filter((cycle) => isSameDay(new Date(cycle.startDate), today))
@@ -98,7 +102,10 @@ export function Stats() {
                 <div
                   className="w-full rounded-xl bg-emerald-500"
                   style={{
-                    height: `${Math.max((bar.minutes / maxMinutes) * 100, bar.minutes > 0 ? 8 : 0)}%`,
+                    height: `${Math.max(
+                      (bar.minutes / maxMinutes) * 100,
+                      bar.minutes > 0 ? 8 : 0,
+                    )}%`,
                   }}
                   title={`${bar.minutes} min`}
                 />

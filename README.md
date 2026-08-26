@@ -1,18 +1,18 @@
 # Pomodoro Dev
 
-Timer pomodoro para ajudar a manter o foco em ciclos de trabalho.
+Timer pomodoro para ajudar a manter o foco em ciclos de trabalho, com pausas, tarefas, estatísticas e modo claro/escuro.
 
-Feito com React, TypeScript, Vite e Styled Components.
+Feito com React, TypeScript, Vite e Tailwind CSS. Pode ser instalado como app (PWA) e funciona offline depois do primeiro acesso.
 
 ## Como usar
 
-1. Dê um nome para a tarefa
-2. Escolha a duração (5 a 60 minutos)
-3. Comece o ciclo e acompanhe o countdown
-4. Interrompa se precisar, ou deixe o timer concluir
-5. Veja o histórico de ciclos na página de histórico
+1. Crie e selecione uma tarefa
+2. Comece o ciclo de foco (a duração vem das configurações)
+3. Pause, retome ou interrompa quando precisar
+4. Ao terminar, a pausa curta ou longa inicia sozinha (se estiver ativado)
+5. Acompanhe o histórico e as estatísticas
 
-Os ciclos ficam salvos no navegador, então você não perde o andamento ao recarregar a página.
+Os dados ficam salvos no navegador.
 
 ## Scripts
 

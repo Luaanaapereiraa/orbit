@@ -26,6 +26,7 @@ import {
   Cycle,
   CycleType,
   Settings,
+  Task,
   initialPomodoroState,
 } from '../reducers/pomodoro/types'
 import {
@@ -46,7 +47,7 @@ interface PomodoroContextType {
   activeCycle: Cycle | undefined
   activeCycleId: string | null
   amountSecondsPassed: number
-  tasks: PomodoroStateTasks
+  tasks: Task[]
   selectedTaskId: string | null
   settings: Settings
   startFocus: () => void
@@ -60,8 +61,6 @@ interface PomodoroContextType {
   deleteTask: (taskId: string) => void
   updateSettings: (settings: Partial<Settings>) => void
 }
-
-type PomodoroStateTasks = ReturnType<typeof loadPomodoroState>['tasks']
 
 export const PomodoroContext = createContext({} as PomodoroContextType)
 
@@ -77,10 +76,7 @@ function getNextBreakType(
     (cycle) => cycle.type === 'focus' && cycle.finishedDate,
   ).length
 
-  if (
-    cyclesUntilLongBreak > 0 &&
-    completedFocus % cyclesUntilLongBreak === 0
-  ) {
+  if (cyclesUntilLongBreak > 0 && completedFocus % cyclesUntilLongBreak === 0) {
     return 'longBreak'
   }
 
@@ -115,13 +111,13 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
   }, [settings.theme])
 
   useEffect(() => {
-    const cycle = activeCycle
-
-    if (!cycle) {
+    if (!activeCycle) {
       document.title = 'Pomodoro Dev'
       setAmountSecondsPassed(0)
       return
     }
+
+    const cycle: Cycle = activeCycle
 
     if (cycle.pausedAt) {
       const elapsed = getElapsedSeconds(cycle)
@@ -275,6 +271,10 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
   }, [])
 
   const updateSettings = useCallback((next: Partial<Settings>) => {
+    if (next.notificationsEnabled) {
+      requestNotificationPermission()
+    }
+
     dispatch(updateSettingsAction(next))
   }, [])
 

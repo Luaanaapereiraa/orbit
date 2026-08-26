@@ -1,10 +1,4 @@
-import {
-  ActionTypes,
-  Cycle,
-  PomodoroAction,
-  Settings,
-  Task,
-} from './types'
+import { ActionTypes, Cycle, PomodoroAction, Settings, Task } from './types'
 
 export function addNewCycleAction(newCycle: Cycle): PomodoroAction {
   return {

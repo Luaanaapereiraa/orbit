@@ -10,6 +10,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+      },
+      devOptions: {
+        enabled: true,
+      },
       manifest: {
         name: 'Pomodoro Dev',
         short_name: 'Pomodoro',

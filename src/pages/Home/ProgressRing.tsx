@@ -32,7 +32,8 @@ export function ProgressRing({
   const stroke = 10
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
-  const offset = circumference - Math.min(Math.max(progress, 0), 1) * circumference
+  const offset =
+    circumference - Math.min(Math.max(progress, 0), 1) * circumference
 
   return (
     <div className="relative grid place-items-center">
@@ -56,7 +57,10 @@ export function ProgressRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          className={cn(typeStroke[type], 'transition-[stroke-dashoffset] duration-300')}
+          className={cn(
+            typeStroke[type],
+            'transition-[stroke-dashoffset] duration-300',
+          )}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}

@@ -6,8 +6,14 @@ import { Card } from '../../components/ui/Card'
 import { cn } from '../../lib/cn'
 
 export function TaskPanel() {
-  const { tasks, selectedTaskId, addTask, selectTask, deleteTask, activeCycle } =
-    usePomodoro()
+  const {
+    tasks,
+    selectedTaskId,
+    addTask,
+    selectTask,
+    deleteTask,
+    activeCycle,
+  } = usePomodoro()
   const [name, setName] = useState('')
   const isLocked = !!activeCycle && activeCycle.type === 'focus'
 
@@ -33,7 +39,11 @@ export function TaskPanel() {
           placeholder="Nova tarefa"
           className="h-11 flex-1 rounded-xl border border-zinc-200 bg-transparent px-3 text-sm text-zinc-900 outline-none focus:border-emerald-500 dark:border-zinc-700 dark:text-zinc-100"
         />
-        <Button type="submit" className="h-11 w-11 px-0" disabled={!name.trim()}>
+        <Button
+          type="submit"
+          className="h-11 w-11 px-0"
+          disabled={!name.trim()}
+        >
           <Plus size={18} />
         </Button>
       </form>
