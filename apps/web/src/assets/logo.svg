@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Orbit">
+  <rect width="64" height="64" rx="14" fill="#0b1220"/>
+  <circle cx="32" cy="38" r="18" fill="#0f766e"/>
+  <ellipse cx="32" cy="18" rx="8" ry="4" fill="#0d9488"/>
+  <path d="M32 16c1-6 8-9 12-8" stroke="#5eead4" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="38" r="9" fill="#121a2c"/>
+  <circle cx="32" cy="38" r="7.5" fill="#e8edf5"/>
+  <circle cx="32" cy="38" r="1.6" fill="#0b1220"/>
+  <path d="M32 38v-7" stroke="#0b1220" stroke-width="2" stroke-linecap="round"/>
+  <path d="M32 38l4.5 3" stroke="#c67c2e" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

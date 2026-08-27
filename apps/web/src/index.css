@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+
+  --color-canvas: #f2eee4;
+  --color-canvas-dark: #0b1220;
+  --color-panel: #fbf8f1;
+  --color-panel-dark: #121a2c;
+  --color-line: #e2dacb;
+  --color-line-dark: #243044;
+  --color-ink: #1a2333;
+  --color-ink-dark: #e8edf5;
+  --color-muted: #6d7380;
+  --color-muted-dark: #93a0b5;
+  --color-brand: #0f766e;
+  --color-brand-strong: #0d9488;
+  --color-focus: #0f9d8a;
+  --color-rest: #c67c2e;
+  --color-rest-long: #5b6ce0;
+  --color-danger: #b42318;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: #f2eee4;
+  color: #1a2333;
+  -webkit-font-smoothing: antialiased;
+}
+
+html.dark body {
+  background: #0b1220;
+  color: #e8edf5;
+}
+
+body {
+  background-image: radial-gradient(
+    circle at top,
+    rgb(15 118 110 / 0.16),
+    transparent 30rem
+  );
+}
+
+html.dark body {
+  background-image: radial-gradient(
+    circle at top,
+    rgb(13 148 136 / 0.18),
+    transparent 32rem
+  );
+}
