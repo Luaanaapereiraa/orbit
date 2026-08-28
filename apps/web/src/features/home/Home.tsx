@@ -59,7 +59,7 @@ export function Home() {
           timeLabel={formatClock(remaining)}
           caption={
             activeCycle?.task ||
-            selectedTask?.name ||
+            selectedTask?.title ||
             'Selecione uma tarefa para começar'
           }
           type={type}

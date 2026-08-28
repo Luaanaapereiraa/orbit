@@ -203,7 +203,7 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
     const newCycle: Cycle = {
       id: crypto.randomUUID(),
       type: 'focus',
-      task: selectedTask.name,
+      task: selectedTask.title,
       taskId: selectedTask.id,
       minutesAmount: settings.focusMinutes,
       startDate: new Date(),
@@ -251,8 +251,9 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
     dispatch(
       addTaskAction({
         id: crypto.randomUUID(),
-        name: trimmed,
-        createdAt: new Date(),
+        title: trimmed,
+        now: new Date().toISOString(),
+        status: 'active',
       }),
     )
   }, [])
@@ -262,7 +263,7 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
   }, [])
 
   const deleteTask = useCallback((taskId: string) => {
-    dispatch(deleteTaskAction(taskId))
+    dispatch(deleteTaskAction(taskId, new Date().toISOString()))
   }, [])
 
   const updateSettings = useCallback((next: Partial<Settings>) => {

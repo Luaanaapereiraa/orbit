@@ -1,3 +1,24 @@
+import {
+  addDailyPlanSecondary,
+  clearInvalidPlanReferences,
+  removeDailyPlanSecondary,
+  removeTaskFromPlans,
+  setDailyPlanEssential,
+  upsertDailyPlan,
+} from '../daily-plan'
+import {
+  addTaskToList,
+  archiveTaskInList,
+  completeTaskInList,
+  deleteTaskFromList,
+  moveTaskBetweenInboxAndActive,
+  reopenTaskInList,
+  reorderTasksByIds,
+  updateTaskEnergy,
+  updateTaskEstimatedMinutes,
+  updateTaskNextAction,
+  updateTaskTitle,
+} from '../tasks'
 import { Cycle, ActionTypes, PomodoroAction, PomodoroState } from './types'
 
 function settlePause(cycle: Cycle): Cycle {
@@ -29,6 +50,41 @@ function patchActiveCycle(
       cycle.id === state.activeCycleId ? patch(cycle) : cycle,
     ),
   }
+}
+
+function withTasksAndPlans(
+  state: PomodoroState,
+  tasks: PomodoroState['tasks'],
+  dailyPlans: PomodoroState['dailyPlans'],
+  selectedTaskId = state.selectedTaskId,
+): PomodoroState {
+  return {
+    ...state,
+    tasks,
+    dailyPlans,
+    selectedTaskId,
+  }
+}
+
+function selectedIfVisible(
+  tasks: PomodoroState['tasks'],
+  selectedTaskId: string | null,
+) {
+  if (!selectedTaskId) {
+    return null
+  }
+
+  const selected = tasks.find((task) => task.id === selectedTaskId)
+
+  if (
+    !selected ||
+    selected.status === 'done' ||
+    selected.status === 'archived'
+  ) {
+    return null
+  }
+
+  return selectedTaskId
 }
 
 export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
@@ -140,12 +196,19 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
         ),
       }
 
-    case ActionTypes.ADD_TASK:
+    case ActionTypes.ADD_TASK: {
+      const tasks = addTaskToList(state.tasks, action.payload)
+
+      if (!tasks) {
+        return state
+      }
+
       return {
         ...state,
-        tasks: [...state.tasks, action.payload.task],
-        selectedTaskId: action.payload.task.id,
+        tasks,
+        selectedTaskId: action.payload.id,
       }
+    }
 
     case ActionTypes.SELECT_TASK:
       return {
@@ -153,14 +216,217 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
         selectedTaskId: action.payload.taskId,
       }
 
-    case ActionTypes.DELETE_TASK:
+    case ActionTypes.DELETE_TASK: {
+      const tasks = deleteTaskFromList(state.tasks, action.payload.taskId)
+
+      if (tasks === state.tasks) {
+        return state
+      }
+
+      return withTasksAndPlans(
+        state,
+        tasks,
+        removeTaskFromPlans(
+          state.dailyPlans,
+          action.payload.taskId,
+          action.payload.now,
+        ),
+        state.selectedTaskId === action.payload.taskId
+          ? null
+          : state.selectedTaskId,
+      )
+    }
+
+    case ActionTypes.UPDATE_TASK_TITLE:
+      return withTasksAndPlans(
+        state,
+        updateTaskTitle(
+          state.tasks,
+          action.payload.taskId,
+          action.payload.title,
+          action.payload.now,
+        ),
+        state.dailyPlans,
+      )
+
+    case ActionTypes.UPDATE_TASK_NEXT_ACTION:
+      return withTasksAndPlans(
+        state,
+        updateTaskNextAction(
+          state.tasks,
+          action.payload.taskId,
+          action.payload.nextAction,
+          action.payload.now,
+        ),
+        state.dailyPlans,
+      )
+
+    case ActionTypes.UPDATE_TASK_ESTIMATED_MINUTES:
+      return withTasksAndPlans(
+        state,
+        updateTaskEstimatedMinutes(
+          state.tasks,
+          action.payload.taskId,
+          action.payload.estimatedMinutes,
+          action.payload.now,
+        ),
+        state.dailyPlans,
+      )
+
+    case ActionTypes.UPDATE_TASK_ENERGY:
+      return withTasksAndPlans(
+        state,
+        updateTaskEnergy(
+          state.tasks,
+          action.payload.taskId,
+          action.payload.energy,
+          action.payload.now,
+        ),
+        state.dailyPlans,
+      )
+
+    case ActionTypes.MOVE_TASK_TO_INBOX:
+      return withTasksAndPlans(
+        state,
+        moveTaskBetweenInboxAndActive(
+          state.tasks,
+          action.payload.taskId,
+          'inbox',
+          action.payload.now,
+        ),
+        state.dailyPlans,
+      )
+
+    case ActionTypes.MOVE_TASK_TO_ACTIVE:
+      return withTasksAndPlans(
+        state,
+        moveTaskBetweenInboxAndActive(
+          state.tasks,
+          action.payload.taskId,
+          'active',
+          action.payload.now,
+        ),
+        state.dailyPlans,
+      )
+
+    case ActionTypes.REORDER_TASKS:
+      return withTasksAndPlans(
+        state,
+        reorderTasksByIds(
+          state.tasks,
+          action.payload.orderedIds,
+          action.payload.now,
+        ),
+        state.dailyPlans,
+      )
+
+    case ActionTypes.COMPLETE_TASK: {
+      const tasks = completeTaskInList(
+        state.tasks,
+        action.payload.taskId,
+        action.payload.now,
+      )
+
+      if (tasks === state.tasks) {
+        return state
+      }
+
+      return withTasksAndPlans(
+        state,
+        tasks,
+        removeTaskFromPlans(
+          state.dailyPlans,
+          action.payload.taskId,
+          action.payload.now,
+        ),
+        selectedIfVisible(tasks, state.selectedTaskId),
+      )
+    }
+
+    case ActionTypes.REOPEN_TASK:
+      return withTasksAndPlans(
+        state,
+        reopenTaskInList(
+          state.tasks,
+          action.payload.taskId,
+          action.payload.now,
+        ),
+        state.dailyPlans,
+      )
+
+    case ActionTypes.ARCHIVE_TASK: {
+      const tasks = archiveTaskInList(
+        state.tasks,
+        action.payload.taskId,
+        action.payload.now,
+      )
+
+      if (tasks === state.tasks) {
+        return state
+      }
+
+      return withTasksAndPlans(
+        state,
+        tasks,
+        removeTaskFromPlans(
+          state.dailyPlans,
+          action.payload.taskId,
+          action.payload.now,
+        ),
+        selectedIfVisible(tasks, state.selectedTaskId),
+      )
+    }
+
+    case ActionTypes.UPSERT_DAILY_PLAN:
       return {
         ...state,
-        tasks: state.tasks.filter((task) => task.id !== action.payload.taskId),
-        selectedTaskId:
-          state.selectedTaskId === action.payload.taskId
-            ? null
-            : state.selectedTaskId,
+        dailyPlans: upsertDailyPlan(state.dailyPlans, action.payload, state.tasks),
+      }
+
+    case ActionTypes.SET_DAILY_PLAN_ESSENTIAL:
+      return {
+        ...state,
+        dailyPlans: setDailyPlanEssential(
+          state.dailyPlans,
+          action.payload.date,
+          action.payload.taskId,
+          action.payload.now,
+          state.tasks,
+        ),
+      }
+
+    case ActionTypes.ADD_DAILY_PLAN_SECONDARY:
+      return {
+        ...state,
+        dailyPlans: addDailyPlanSecondary(
+          state.dailyPlans,
+          action.payload.date,
+          action.payload.taskId,
+          action.payload.now,
+          state.tasks,
+        ),
+      }
+
+    case ActionTypes.REMOVE_DAILY_PLAN_SECONDARY:
+      return {
+        ...state,
+        dailyPlans: removeDailyPlanSecondary(
+          state.dailyPlans,
+          action.payload.date,
+          action.payload.taskId,
+          action.payload.now,
+          state.tasks,
+        ),
+      }
+
+    case ActionTypes.CLEAR_INVALID_PLAN_REFERENCES:
+      return {
+        ...state,
+        dailyPlans: clearInvalidPlanReferences(
+          state.dailyPlans,
+          state.tasks,
+          action.payload.now,
+        ),
       }
 
     case ActionTypes.UPDATE_SETTINGS:

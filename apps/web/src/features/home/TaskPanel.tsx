@@ -2,6 +2,7 @@
 
 import { type FormEvent, useState } from 'react'
 import { Plus, Trash } from '@phosphor-icons/react'
+import { tasksForCommonList } from '@destravai/core'
 import { usePomodoro } from '../../contexts/PomodoroContext'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -17,6 +18,7 @@ export function TaskPanel() {
     activeCycle,
   } = usePomodoro()
   const [name, setName] = useState('')
+  const visibleTasks = tasksForCommonList(tasks)
   const isLocked = !!activeCycle && activeCycle.type === 'focus'
 
   function handleSubmit(event: FormEvent) {
@@ -50,13 +52,13 @@ export function TaskPanel() {
       </form>
 
       <ul className="mt-4 flex-1 space-y-2 overflow-auto">
-        {tasks.length === 0 && (
+        {visibleTasks.length === 0 && (
           <li className="rounded-xl border border-dashed border-line p-4 text-sm text-muted dark:border-line-dark dark:text-muted-dark">
             Nenhuma tarefa ainda. Crie a primeira para começar.
           </li>
         )}
 
-        {tasks.map((task) => {
+        {visibleTasks.map((task) => {
           const selected = task.id === selectedTaskId
 
           return (
@@ -75,13 +77,13 @@ export function TaskPanel() {
                   onClick={() => selectTask(task.id)}
                   className="flex-1 truncate text-left text-sm font-medium text-ink disabled:opacity-60 dark:text-ink-dark"
                 >
-                  {task.name}
+                  {task.title}
                 </button>
                 <button
                   type="button"
                   onClick={() => deleteTask(task.id)}
                   className="rounded-lg p-2 text-muted hover:bg-danger/10 hover:text-danger dark:text-muted-dark"
-                  aria-label={`Excluir ${task.name}`}
+                  aria-label={`Excluir ${task.title}`}
                 >
                   <Trash size={16} />
                 </button>
