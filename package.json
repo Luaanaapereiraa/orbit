@@ -28,6 +28,7 @@
   },
   "overrides": {
     "react": "$react",
-    "react-dom": "$react-dom"
+    "react-dom": "$react-dom",
+    "zod": "3.25.76"
   }
 }

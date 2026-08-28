@@ -1,6 +1,6 @@
 import { Agent, tool, type RunContext } from '@openai/agents'
 import { z } from 'zod'
-import { UnlockPlanSchema } from '@destravai/contracts'
+import { UnlockPlanSchema, type UnlockPlan } from '@destravai/contracts'
 import type { AppConfig } from '../../config/env.js'
 import type { UnlockRunContext } from './context.js'
 import { unlockAgentInstructions } from './instructions.js'
@@ -19,38 +19,41 @@ function requireContext(ctx: RunContext<UnlockRunContext> | undefined) {
 }
 
 export function createUnlockTaskTools() {
-  const getTaskContext = tool<typeof EmptyArgsSchema, UnlockRunContext>({
+  const getTaskContext = tool({
     name: 'get_task_context',
     description:
       'Read the trusted task context for this run. Call this before proposing a plan.',
     parameters: EmptyArgsSchema,
     strict: true,
-    execute: async (_args, ctx) => readTrustedTaskContext(requireContext(ctx)),
+    execute: async (_args, ctx) =>
+      readTrustedTaskContext(requireContext(ctx as RunContext<UnlockRunContext>)),
   })
 
-  const validateUnlockPlan = tool<
-    z.ZodObject<{ plan: typeof UnlockPlanSchema }>,
-    UnlockRunContext
-  >({
+  const planArgs = z.object({ plan: UnlockPlanSchema }).strict()
+
+  const validateUnlockPlan = tool({
     name: 'validate_unlock_plan',
     description: 'Validate a proposed unlock plan against deterministic rules.',
-    parameters: z.object({ plan: UnlockPlanSchema }).strict(),
+    parameters: planArgs,
     strict: true,
-    execute: async ({ plan }, ctx) =>
-      applyValidatedPlan(requireContext(ctx), plan),
+    execute: async (input, ctx) =>
+      applyValidatedPlan(
+        requireContext(ctx as RunContext<UnlockRunContext>),
+        (input as { plan: UnlockPlan }).plan,
+      ),
   })
 
-  const saveUnlockPlan = tool<
-    z.ZodObject<{ plan: typeof UnlockPlanSchema }>,
-    UnlockRunContext
-  >({
+  const saveUnlockPlan = tool({
     name: 'save_unlock_plan',
     description:
       'Persist a previously validated plan. The plan must match the last validated hash.',
-    parameters: z.object({ plan: UnlockPlanSchema }).strict(),
+    parameters: planArgs,
     strict: true,
-    execute: async ({ plan }, ctx) =>
-      saveValidatedUnlockPlan(requireContext(ctx), plan),
+    execute: async (input, ctx) =>
+      saveValidatedUnlockPlan(
+        requireContext(ctx as RunContext<UnlockRunContext>),
+        (input as { plan: UnlockPlan }).plan,
+      ),
   })
 
   return { getTaskContext, validateUnlockPlan, saveUnlockPlan }
@@ -62,7 +65,7 @@ export function createUnlockTaskAgent(
 ) {
   const tools = createUnlockTaskTools()
 
-  return new Agent<UnlockRunContext, typeof AgentStructuredOutputSchema>({
+  return new Agent({
     name: 'Destravar tarefa',
     instructions: unlockAgentInstructions(locale),
     model: config.openaiModel,
