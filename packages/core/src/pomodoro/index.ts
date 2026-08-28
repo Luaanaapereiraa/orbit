@@ -172,6 +172,9 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
         },
       }
 
+    case ActionTypes.HYDRATE_STATE:
+      return action.payload.state
+
     default:
       return state
   }

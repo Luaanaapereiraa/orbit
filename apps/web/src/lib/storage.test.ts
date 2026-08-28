@@ -19,6 +19,15 @@ describe('storage', () => {
     expect(loadPomodoroState()).toEqual(initialPomodoroState)
   })
 
+  it('returns the initial state when storage is unavailable', () => {
+    expect(loadPomodoroState(null)).toEqual(initialPomodoroState)
+  })
+
+  it('does not write when storage is unavailable', () => {
+    expect(() => persistPomodoroState(makeState(), null)).not.toThrow()
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
   it('persists and reloads v2 state, filling missing settings', () => {
     persistPomodoroState(
       makeState({

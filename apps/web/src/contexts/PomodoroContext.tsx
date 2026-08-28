@@ -1,4 +1,5 @@
-/* eslint-disable react-refresh/only-export-components */
+'use client'
+
 import {
   ReactNode,
   createContext,
@@ -18,6 +19,7 @@ import {
   formatClock,
   getElapsedSeconds,
   getNextBreakType,
+  hydratePomodoroStateAction,
   interruptCurrentCycleAction,
   pauseCurrentCycleAction,
   pomodoroReducer,
@@ -69,33 +71,41 @@ interface PomodoroProviderProps {
 }
 
 export function PomodoroProvider({ children }: PomodoroProviderProps) {
-  const [state, dispatch] = useReducer(
-    pomodoroReducer,
-    initialPomodoroState,
-    loadPomodoroState,
-  )
+  const [state, dispatch] = useReducer(pomodoroReducer, initialPomodoroState)
+  const [hydrated, setHydrated] = useState(false)
 
   const { cycles, activeCycleId, selectedTaskId, tasks, settings } = state
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
   const selectedTask = tasks.find((task) => task.id === selectedTaskId)
 
-  const [amountSecondsPassed, setAmountSecondsPassed] = useState(() => {
-    if (activeCycle) {
-      return getElapsedSeconds(activeCycle)
+  const [amountSecondsPassed, setAmountSecondsPassed] = useState(0)
+
+  useEffect(() => {
+    dispatch(hydratePomodoroStateAction(loadPomodoroState()))
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) {
+      return
     }
 
-    return 0
-  })
-
-  useEffect(() => {
     persistPomodoroState(state)
-  }, [state])
+  }, [hydrated, state])
 
   useEffect(() => {
+    if (!hydrated) {
+      return
+    }
+
     applyThemeClass(settings.theme)
-  }, [settings.theme])
+  }, [hydrated, settings.theme])
 
   useEffect(() => {
+    if (!hydrated) {
+      return
+    }
+
     if (!activeCycle) {
       document.title = APP_NAME
       setAmountSecondsPassed(0)
@@ -183,7 +193,7 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
         window.clearInterval(intervalId)
       }
     }
-  }, [activeCycle, cycles, settings])
+  }, [hydrated, activeCycle, cycles, settings])
 
   const startFocus = useCallback(() => {
     if (!selectedTask) {

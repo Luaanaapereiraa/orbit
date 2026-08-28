@@ -2,6 +2,7 @@ import {
   ActionTypes,
   Cycle,
   PomodoroAction,
+  PomodoroState,
   Settings,
   Task,
 } from './types'
@@ -63,5 +64,14 @@ export function updateSettingsAction(
   return {
     type: ActionTypes.UPDATE_SETTINGS,
     payload: { settings },
+  }
+}
+
+export function hydratePomodoroStateAction(
+  state: PomodoroState,
+): PomodoroAction {
+  return {
+    type: ActionTypes.HYDRATE_STATE,
+    payload: { state },
   }
 }

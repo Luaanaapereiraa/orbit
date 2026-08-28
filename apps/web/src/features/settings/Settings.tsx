@@ -1,3 +1,5 @@
+'use client'
+
 import { usePomodoro } from '../../contexts/PomodoroContext'
 import { Card } from '../../components/ui/Card'
 import { Toggle } from '../../components/ui/Toggle'

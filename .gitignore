@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Next.js
+.next
+
+# Serwist
+apps/web/public/sw*
+apps/web/public/swe-worker*
+

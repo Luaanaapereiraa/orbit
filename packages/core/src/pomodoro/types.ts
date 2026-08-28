@@ -66,6 +66,7 @@ export const ActionTypes = {
   SELECT_TASK: 'SELECT_TASK',
   DELETE_TASK: 'DELETE_TASK',
   UPDATE_SETTINGS: 'UPDATE_SETTINGS',
+  HYDRATE_STATE: 'HYDRATE_STATE',
 } as const
 
 export type PomodoroAction =
@@ -84,4 +85,8 @@ export type PomodoroAction =
   | {
       type: typeof ActionTypes.UPDATE_SETTINGS
       payload: { settings: Partial<Settings> }
+    }
+  | {
+      type: typeof ActionTypes.HYDRATE_STATE
+      payload: { state: PomodoroState }
     }

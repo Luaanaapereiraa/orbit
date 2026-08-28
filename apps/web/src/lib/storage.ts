@@ -42,8 +42,32 @@ function tasksFromCycles(cycles: Cycle[]) {
   }))
 }
 
-export function loadPomodoroState(): PomodoroState {
-  const storedV2 = localStorage.getItem(STORAGE_KEY)
+export function getBrowserStorage(): Storage | null {
+  try {
+    if (typeof globalThis === 'undefined') {
+      return null
+    }
+
+    const storage = (globalThis as { localStorage?: Storage }).localStorage
+
+    if (!storage) {
+      return null
+    }
+
+    return storage
+  } catch {
+    return null
+  }
+}
+
+export function loadPomodoroState(
+  storage: Storage | null = getBrowserStorage(),
+): PomodoroState {
+  if (!storage) {
+    return initialPomodoroState
+  }
+
+  const storedV2 = storage.getItem(STORAGE_KEY)
 
   if (storedV2) {
     try {
@@ -64,7 +88,7 @@ export function loadPomodoroState(): PomodoroState {
     }
   }
 
-  const storedV1 = localStorage.getItem(STORAGE_KEY_V1)
+  const storedV1 = storage.getItem(STORAGE_KEY_V1)
 
   if (storedV1) {
     try {
@@ -87,10 +111,21 @@ export function loadPomodoroState(): PomodoroState {
   return initialPomodoroState
 }
 
-export function persistPomodoroState(state: PomodoroState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+export function persistPomodoroState(
+  state: PomodoroState,
+  storage: Storage | null = getBrowserStorage(),
+) {
+  if (!storage) {
+    return
+  }
+
+  storage.setItem(STORAGE_KEY, JSON.stringify(state))
 }
 
 export function applyThemeClass(theme: 'light' | 'dark') {
+  if (typeof document === 'undefined') {
+    return
+  }
+
   document.documentElement.classList.toggle('dark', theme === 'dark')
 }

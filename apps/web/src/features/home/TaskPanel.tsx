@@ -1,5 +1,7 @@
-import { FormEvent, useState } from 'react'
-import { Plus, Trash } from 'phosphor-react'
+'use client'
+
+import { type FormEvent, useState } from 'react'
+import { Plus, Trash } from '@phosphor-icons/react'
 import { usePomodoro } from '../../contexts/PomodoroContext'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'

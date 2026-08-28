@@ -5,6 +5,7 @@ import {
   clearHistoryAction,
   deleteTaskAction,
   finishCycleAction,
+  hydratePomodoroStateAction,
   interruptCurrentCycleAction,
   pauseCurrentCycleAction,
   resumeCurrentCycleAction,
@@ -128,5 +129,16 @@ describe('pomodoroReducer', () => {
     expect(result.settings.focusMinutes).toBe(50)
     expect(result.settings.theme).toBe('light')
     expect(result.settings.shortBreakMinutes).toBe(5)
+  })
+
+  it('replaces the whole state on hydrate', () => {
+    const stored = makeState({
+      selectedTaskId: 'task-1',
+      tasks: [{ id: 'task-1', name: 'Ler', createdAt: new Date() }],
+    })
+
+    const result = pomodoroReducer(makeState(), hydratePomodoroStateAction(stored))
+
+    expect(result).toEqual(stored)
   })
 })

@@ -1,10 +1,12 @@
+'use client'
+
 import { formatDistanceToNow } from 'date-fns'
-import ptBR from 'date-fns/locale/pt-BR'
+import { ptBR } from 'date-fns/locale'
 import { useMemo, useState } from 'react'
+import { type CycleType } from '@destravai/core'
 import { usePomodoro } from '../../contexts/PomodoroContext'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { type CycleType } from '@destravai/core'
 import { cn } from '../../lib/cn'
 
 const typeLabels: Record<CycleType, string> = {

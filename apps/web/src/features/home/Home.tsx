@@ -1,8 +1,10 @@
-import { HandPalm, Pause, Play, SkipForward } from 'phosphor-react'
+'use client'
+
+import { HandPalm, Pause, Play, SkipForward } from '@phosphor-icons/react'
+import { formatClock, type CycleType } from '@destravai/core'
 import { usePomodoro } from '../../contexts/PomodoroContext'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { formatClock, type CycleType } from '@destravai/core'
 import { ProgressRing } from './ProgressRing'
 import { TaskPanel } from './TaskPanel'
 

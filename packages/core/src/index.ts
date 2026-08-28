@@ -17,6 +17,7 @@ export {
   clearHistoryAction,
   deleteTaskAction,
   finishCycleAction,
+  hydratePomodoroStateAction,
   interruptCurrentCycleAction,
   pauseCurrentCycleAction,
   resumeCurrentCycleAction,

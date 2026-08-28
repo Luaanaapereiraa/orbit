@@ -1,3 +1,5 @@
+'use client'
+
 import {
   eachDayOfInterval,
   endOfWeek,
@@ -6,11 +8,11 @@ import {
   startOfDay,
   startOfWeek,
 } from 'date-fns'
-import ptBR from 'date-fns/locale/pt-BR'
+import { ptBR } from 'date-fns/locale'
 import { useMemo } from 'react'
+import { focusedMinutesOf } from '@destravai/core'
 import { usePomodoro } from '../../contexts/PomodoroContext'
 import { Card } from '../../components/ui/Card'
-import { focusedMinutesOf } from '@destravai/core'
 
 export function Stats() {
   const { cycles } = usePomodoro()
