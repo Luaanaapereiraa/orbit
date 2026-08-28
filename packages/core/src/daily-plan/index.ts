@@ -74,23 +74,34 @@ export function normalizePlanIds(plan: DailyPlan): DailyPlan {
 
 export function sanitizeDailyPlan(plan: DailyPlan, tasks: Task[]): DailyPlan {
   const byId = tasksById(tasks)
-  const normalized = normalizePlanIds(plan)
-  const essentialTask = normalized.essentialTaskId
-    ? byId.get(normalized.essentialTaskId)
+  const essentialTask = plan.essentialTaskId
+    ? byId.get(plan.essentialTaskId)
     : undefined
   const essentialTaskId = canTaskRemainInPlan(essentialTask)
     ? essentialTask.id
     : null
-  const secondaryTaskIds = normalized.secondaryTaskIds.filter((id) => {
-    if (id === essentialTaskId) {
-      return false
+  const seen = new Set<string>()
+  const secondaryTaskIds: string[] = []
+
+  for (const id of plan.secondaryTaskIds) {
+    if (!id || id === essentialTaskId || seen.has(id)) {
+      continue
     }
 
-    return canTaskRemainInPlan(byId.get(id))
-  })
+    if (!canTaskRemainInPlan(byId.get(id))) {
+      continue
+    }
+
+    seen.add(id)
+    secondaryTaskIds.push(id)
+
+    if (secondaryTaskIds.length === 2) {
+      break
+    }
+  }
 
   return {
-    ...normalized,
+    ...plan,
     essentialTaskId,
     secondaryTaskIds,
   }

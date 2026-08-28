@@ -116,11 +116,19 @@ describe('completion, reopen and archive', () => {
     expect(completed.updatedAt).toBe(LATER)
   })
 
-  it('reopens a done task and clears completedAt', () => {
+  it('reopens a done task to active and clears completedAt', () => {
     const task = makeTask({ status: 'done', completedAt: NOW })
-    const [reopened] = reopenTaskInList([task], task.id, LATER)
+    const [reopened] = reopenTaskInList([task], task.id, LATER, 'active')
 
     expect(reopened.status).toBe('active')
+    expect(reopened.completedAt).toBeNull()
+  })
+
+  it('reopens a done task to inbox without adding plan membership', () => {
+    const task = makeTask({ status: 'done', completedAt: NOW })
+    const [reopened] = reopenTaskInList([task], task.id, LATER, 'inbox')
+
+    expect(reopened.status).toBe('inbox')
     expect(reopened.completedAt).toBeNull()
   })
 
@@ -129,6 +137,14 @@ describe('completion, reopen and archive', () => {
     const [archived] = archiveTaskInList([task], task.id, LATER)
 
     expect(archived.status).toBe('archived')
+  })
+
+  it('preserves completedAt when a done task is archived', () => {
+    const task = makeTask({ status: 'done', completedAt: NOW })
+    const [archived] = archiveTaskInList([task], task.id, LATER)
+
+    expect(archived.status).toBe('archived')
+    expect(archived.completedAt).toBe(NOW)
   })
 })
 

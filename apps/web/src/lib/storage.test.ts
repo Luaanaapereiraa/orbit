@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   STORAGE_KEY,
   STORAGE_KEY_DESTRAVAI,
@@ -45,6 +45,7 @@ describe('storage', () => {
   afterEach(() => {
     localStorage.clear()
     document.documentElement.classList.remove('dark')
+    vi.restoreAllMocks()
   })
 
   it('returns the initial state when nothing is stored', () => {
@@ -135,6 +136,8 @@ describe('storage', () => {
     expect(loaded.cycles[0].type).toBe('focus')
     expect(loaded.cycles[0].pausedMs).toBe(0)
     expect(loaded.cycles[0].id).toBe('old-1')
+    expect(loaded.cycles[0].task).toBe('Projeto legado')
+    expect(loaded.cycles[0].taskId).toBe(loaded.tasks[0].id)
     expect(loaded.activeCycleId).toBe('old-1')
     expect(loaded.tasks[0].title).toBe('Projeto legado')
     expect(loaded.tasks[0].status).toBe('active')
@@ -228,5 +231,174 @@ describe('storage', () => {
 
     applyThemeClass('light')
     expect(document.documentElement.classList.contains('dark')).toBe(false)
+  })
+
+  it('creates deterministic v1 task ids without random UUID', () => {
+    const uuid = vi.spyOn(globalThis.crypto, 'randomUUID')
+    const payload = {
+      activeCycleId: 'old-1',
+      cycles: [
+        {
+          id: 'old-1',
+          task: 'Projeto legado',
+          minutesAmount: 25,
+          startDate: '2026-01-01T10:00:00.000Z',
+        },
+        {
+          id: 'old-2',
+          task: 'Projeto legado',
+          minutesAmount: 25,
+          startDate: '2026-01-01T11:00:00.000Z',
+        },
+        {
+          id: 'old-3',
+          task: 'Outra tarefa',
+          minutesAmount: 25,
+          startDate: '2026-01-01T12:00:00.000Z',
+        },
+        {
+          id: 'old-4',
+          task: '',
+          minutesAmount: 25,
+          startDate: '2026-01-01T13:00:00.000Z',
+        },
+      ],
+    }
+
+    localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(payload))
+    const first = loadPomodoroState(localStorage, NOW)
+
+    localStorage.clear()
+    localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(payload))
+    const second = loadPomodoroState(localStorage, NOW)
+
+    expect(uuid).not.toHaveBeenCalled()
+    expect(first.tasks.map((task) => task.id)).toEqual(
+      second.tasks.map((task) => task.id),
+    )
+    expect(first.tasks.map((task) => task.title)).toEqual([
+      'Projeto legado',
+      'Outra tarefa',
+    ])
+    expect(first.tasks[0].id).not.toBe(first.tasks[1].id)
+    expect(first.cycles[0].id).toBe('old-1')
+    expect(first.cycles[0].task).toBe('Projeto legado')
+    expect(first.cycles[0].taskId).toBe(first.tasks[0].id)
+    expect(first.cycles[1].taskId).toBe(first.tasks[0].id)
+    expect(first.cycles[2].taskId).toBe(first.tasks[1].id)
+    expect(first.cycles[3].taskId).toBeUndefined()
+    expect(first.tasks[0].id.startsWith('v1:')).toBe(true)
+
+    persistPomodoroState(first)
+    const roundtrip = loadPomodoroState(localStorage, NOW)
+
+    expect(roundtrip.tasks.map((task) => task.id)).toEqual(
+      first.tasks.map((task) => task.id),
+    )
+  })
+
+  it('does not duplicate v1 tasks on double hydration', () => {
+    localStorage.setItem(
+      STORAGE_KEY_V1,
+      JSON.stringify({
+        activeCycleId: 'old-1',
+        cycles: [
+          {
+            id: 'old-1',
+            task: 'Projeto legado',
+            minutesAmount: 25,
+            startDate: '2026-01-01T10:00:00.000Z',
+          },
+        ],
+      }),
+    )
+
+    const first = loadPomodoroState(localStorage, NOW)
+    const second = loadPomodoroState(localStorage, NOW)
+
+    expect(second.tasks).toHaveLength(1)
+    expect(second.tasks[0].id).toBe(first.tasks[0].id)
+
+    persistPomodoroState(first)
+    const afterPersist = loadPomodoroState(localStorage, NOW)
+
+    expect(afterPersist.tasks).toHaveLength(1)
+    expect(afterPersist.tasks[0].id).toBe(first.tasks[0].id)
+  })
+
+  it('roundtrips dailyPlans that still reference completed tasks', () => {
+    persistPomodoroState(
+      makeState({
+        tasks: [
+          makeTask({
+            id: 'task-1',
+            title: 'Concluída',
+            status: 'done',
+            completedAt: NOW,
+          }),
+        ],
+        dailyPlans: [
+          {
+            date: '2026-01-01',
+            essentialTaskId: 'task-1',
+            secondaryTaskIds: [],
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+        ],
+      }),
+    )
+
+    const loaded = loadPomodoroState(localStorage, NOW)
+
+    expect(loaded.tasks[0].status).toBe('done')
+    expect(loaded.dailyPlans[0].essentialTaskId).toBe('task-1')
+  })
+
+  it('does not mix a valid empty DestravAI envelope with legacy v2 data', () => {
+    localStorage.setItem(
+      STORAGE_KEY_DESTRAVAI,
+      JSON.stringify({
+        version: 1,
+        state: {
+          ...initialPomodoroState,
+          settings: { ...initialPomodoroState.settings },
+        },
+      }),
+    )
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(v2LegacyState()))
+
+    const loaded = loadPomodoroState(localStorage, NOW)
+
+    expect(loaded.tasks).toEqual([])
+    expect(loaded.cycles).toEqual([])
+    expect(loaded.selectedTaskId).toBeNull()
+  })
+
+  it('falls back to v2 when the new envelope is corrupted', () => {
+    localStorage.setItem(STORAGE_KEY_DESTRAVAI, '{not-json')
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(v2LegacyState()))
+
+    const loaded = loadPomodoroState(localStorage, NOW)
+
+    expect(loaded.tasks[0].title).toBe('Escrever testes')
+    expect(loaded.cycles[0].id).toBe('cycle-keep')
+  })
+
+  it('preserves an active cycle across reload', () => {
+    persistPomodoroState(
+      makeState({
+        selectedTaskId: 'task-1',
+        tasks: [makeTask({ id: 'task-1', title: 'Estudar testes' })],
+        cycles: [makeCycle({ id: 'cycle-1', task: 'Estudar testes' })],
+        activeCycleId: 'cycle-1',
+      }),
+    )
+
+    const loaded = loadPomodoroState(localStorage, NOW)
+
+    expect(loaded.activeCycleId).toBe('cycle-1')
+    expect(loaded.cycles[0].id).toBe('cycle-1')
+    expect(loaded.cycles[0].task).toBe('Estudar testes')
   })
 })

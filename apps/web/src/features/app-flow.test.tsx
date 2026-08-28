@@ -9,7 +9,7 @@ import {
   STORAGE_KEY,
   STORAGE_KEY_DESTRAVAI,
 } from '../lib/storage'
-import { makeState, makeTask } from '../test/factories'
+import { makeCycle, makeState, makeTask } from '../test/factories'
 
 function renderHome() {
   return render(
@@ -206,5 +206,88 @@ describe('client hydration', () => {
       'Tarefa migrada',
     )
     expect(localStorage.getItem(STORAGE_KEY)).toContain('Tarefa migrada')
+  })
+
+  it('does not wipe completed plan references after hydration persist', async () => {
+    persistPomodoroState(
+      makeState({
+        selectedTaskId: 'task-active',
+        tasks: [
+          makeTask({ id: 'task-active', title: 'Ativa', status: 'active' }),
+          makeTask({
+            id: 'task-done',
+            title: 'Concluída',
+            status: 'done',
+            completedAt: '2026-01-01T12:00:00.000Z',
+            position: 1,
+          }),
+        ],
+        dailyPlans: [
+          {
+            date: '2026-01-01',
+            essentialTaskId: 'task-done',
+            secondaryTaskIds: [],
+            createdAt: '2026-01-01T12:00:00.000Z',
+            updatedAt: '2026-01-01T12:00:00.000Z',
+          },
+        ],
+      }),
+    )
+
+    render(
+      <PomodoroProvider>
+        <Home />
+      </PomodoroProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ativa' })).toBeInTheDocument()
+    })
+
+    const stored = JSON.parse(
+      String(localStorage.getItem(STORAGE_KEY_DESTRAVAI)),
+    )
+    expect(stored.state.dailyPlans[0].essentialTaskId).toBe('task-done')
+    expect(stored.state.tasks[1].status).toBe('done')
+  })
+
+  it('restores an active cycle after refresh without writing empty state first', async () => {
+    persistPomodoroState(
+      makeState({
+        selectedTaskId: 'task-1',
+        tasks: [makeTask({ id: 'task-1', title: 'Estudar testes' })],
+        cycles: [
+          makeCycle({
+            id: 'cycle-1',
+            task: 'Estudar testes',
+            taskId: 'task-1',
+          }),
+        ],
+        activeCycleId: 'cycle-1',
+      }),
+    )
+
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+
+    render(
+      <PomodoroProvider>
+        <Home />
+      </PomodoroProvider>,
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /pausar/i }),
+      ).toBeInTheDocument()
+    })
+
+    const persistedWrites = setItem.mock.calls.filter(
+      ([key]) => key === STORAGE_KEY_DESTRAVAI,
+    )
+
+    expect(persistedWrites.length).toBeGreaterThan(0)
+    expect(JSON.parse(String(persistedWrites[0][1])).state.activeCycleId).toBe(
+      'cycle-1',
+    )
   })
 })

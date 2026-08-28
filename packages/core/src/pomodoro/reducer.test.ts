@@ -172,6 +172,31 @@ describe('pomodoroReducer', () => {
     expect(result).toEqual(stored)
   })
 
+  it('keeps completed plan references when hydrating state', () => {
+    const done = makeTask({
+      id: 'task-1',
+      status: 'done',
+      completedAt: NOW,
+    })
+    const stored = makeState({
+      tasks: [done],
+      dailyPlans: [
+        makeDailyPlan({
+          essentialTaskId: done.id,
+          secondaryTaskIds: [],
+        }),
+      ],
+    })
+
+    const result = pomodoroReducer(
+      makeState(),
+      hydratePomodoroStateAction(stored),
+    )
+
+    expect(result.dailyPlans[0].essentialTaskId).toBe(done.id)
+    expect(result.tasks[0].status).toBe('done')
+  })
+
   it('starts dailyPlans empty', () => {
     expect(makeState().dailyPlans).toEqual([])
   })
@@ -243,14 +268,14 @@ describe('task and daily plan actions', () => {
 
     const reopened = pomodoroReducer(
       completed,
-      reopenTaskAction(essencial.id, LATER),
+      reopenTaskAction(essencial.id, LATER, 'active'),
     )
     expect(reopened.tasks[0].status).toBe('active')
     expect(reopened.tasks[0].completedAt).toBeNull()
 
     const archived = pomodoroReducer(
       reopened,
-      archiveTaskAction(essencial.id, LATER),
+      archiveTaskAction(essencial.id, LATER, DATE),
     )
     expect(archived.tasks[0].status).toBe('archived')
   })
@@ -333,27 +358,45 @@ describe('task and daily plan actions', () => {
     expect(result.dailyPlans[0].secondaryTaskIds).toEqual([])
   })
 
-  it('removes a deleted task from daily plans', () => {
+  it('removes a deleted task from every daily plan', () => {
+    const past = makeDailyPlan({
+      date: '2025-12-31',
+      essentialTaskId: essencial.id,
+      secondaryTaskIds: [outra.id],
+    })
+    const current = makeDailyPlan({
+      date: DATE,
+      essentialTaskId: secundaria.id,
+      secondaryTaskIds: [essencial.id],
+    })
+    const unrelated = makeDailyPlan({
+      date: '2026-01-02',
+      essentialTaskId: outra.id,
+      secondaryTaskIds: [secundaria.id],
+    })
     const state = makeState({
-      tasks: [essencial, secundaria],
-      dailyPlans: [
-        makeDailyPlan({
-          essentialTaskId: essencial.id,
-          secondaryTaskIds: [secundaria.id],
-        }),
-      ],
+      tasks: [essencial, secundaria, outra],
+      selectedTaskId: essencial.id,
+      dailyPlans: [past, current, unrelated],
     })
     const result = pomodoroReducer(
       state,
       deleteTaskAction(essencial.id, LATER),
     )
 
-    expect(result.tasks.map((task) => task.id)).toEqual([secundaria.id])
+    expect(result.tasks.map((task) => task.id)).toEqual([
+      secundaria.id,
+      outra.id,
+    ])
+    expect(result.selectedTaskId).toBeNull()
     expect(result.dailyPlans[0].essentialTaskId).toBeNull()
-    expect(result.dailyPlans[0].secondaryTaskIds).toEqual([secundaria.id])
+    expect(result.dailyPlans[0].secondaryTaskIds).toEqual([outra.id])
+    expect(result.dailyPlans[1].essentialTaskId).toBe(secundaria.id)
+    expect(result.dailyPlans[1].secondaryTaskIds).toEqual([])
+    expect(result.dailyPlans[2]).toEqual(unrelated)
   })
 
-  it('removes a completed task from daily plans', () => {
+  it('preserves a completed essential task in the current plan', () => {
     const state = makeState({
       tasks: [essencial, secundaria],
       selectedTaskId: essencial.id,
@@ -369,8 +412,239 @@ describe('task and daily plan actions', () => {
       completeTaskAction(essencial.id, LATER),
     )
 
-    expect(result.dailyPlans[0].essentialTaskId).toBeNull()
     expect(result.tasks[0].status).toBe('done')
+    expect(result.tasks[0].completedAt).toBe(LATER)
+    expect(result.selectedTaskId).toBeNull()
+    expect(result.dailyPlans).toBe(state.dailyPlans)
+    expect(result.dailyPlans[0].essentialTaskId).toBe(essencial.id)
+    expect(result.dailyPlans[0].secondaryTaskIds).toEqual([secundaria.id])
+  })
+
+  it('preserves a completed secondary task in the current plan', () => {
+    const state = makeState({
+      tasks: [essencial, secundaria],
+      dailyPlans: [
+        makeDailyPlan({
+          essentialTaskId: essencial.id,
+          secondaryTaskIds: [secundaria.id],
+        }),
+      ],
+    })
+    const result = pomodoroReducer(
+      state,
+      completeTaskAction(secundaria.id, LATER),
+    )
+
+    expect(result.tasks.find((task) => task.id === secundaria.id)?.status).toBe(
+      'done',
+    )
+    expect(result.dailyPlans[0].secondaryTaskIds).toEqual([secundaria.id])
+    expect(result.dailyPlans[0].essentialTaskId).toBe(essencial.id)
+  })
+
+  it('preserves completed-task references in earlier and later plans', () => {
+    const past = makeDailyPlan({
+      date: '2025-12-31',
+      essentialTaskId: essencial.id,
+    })
+    const future = makeDailyPlan({
+      date: '2026-01-02',
+      secondaryTaskIds: [essencial.id],
+    })
+    const state = makeState({
+      tasks: [essencial],
+      dailyPlans: [past, future],
+    })
+    const result = pomodoroReducer(
+      state,
+      completeTaskAction(essencial.id, LATER),
+    )
+
+    expect(result.dailyPlans[0].essentialTaskId).toBe(essencial.id)
+    expect(result.dailyPlans[1].secondaryTaskIds).toEqual([essencial.id])
+    expect(result.dailyPlans).toBe(state.dailyPlans)
+  })
+
+  it('keeps a completed task after CLEAR_INVALID_PLAN_REFERENCES', () => {
+    const done = makeTask({
+      id: essencial.id,
+      title: essencial.title,
+      status: 'done',
+      completedAt: NOW,
+    })
+    const state = makeState({
+      tasks: [done],
+      dailyPlans: [
+        makeDailyPlan({
+          essentialTaskId: done.id,
+          secondaryTaskIds: ['gone'],
+        }),
+      ],
+    })
+    const result = pomodoroReducer(
+      state,
+      clearInvalidPlanReferencesAction(LATER),
+    )
+
+    expect(result.dailyPlans[0].essentialTaskId).toBe(done.id)
+    expect(result.dailyPlans[0].secondaryTaskIds).toEqual([])
+  })
+
+  it('preserves plan references when a task is reopened', () => {
+    const done = makeTask({
+      id: essencial.id,
+      title: essencial.title,
+      status: 'done',
+      completedAt: NOW,
+    })
+    const plan = makeDailyPlan({
+      essentialTaskId: done.id,
+      secondaryTaskIds: [secundaria.id],
+    })
+    const state = makeState({
+      tasks: [done, secundaria],
+      dailyPlans: [plan],
+    })
+    const result = pomodoroReducer(
+      state,
+      reopenTaskAction(done.id, LATER, 'inbox'),
+    )
+
+    expect(result.tasks[0].status).toBe('inbox')
+    expect(result.tasks[0].completedAt).toBeNull()
+    expect(result.dailyPlans).toBe(state.dailyPlans)
+    expect(result.dailyPlans[0].essentialTaskId).toBe(done.id)
+  })
+
+  it('rejects adding a completed or archived task to a new plan', () => {
+    const done = makeTask({
+      id: 'done',
+      status: 'done',
+      completedAt: NOW,
+    })
+    const archived = makeTask({ id: 'archived', status: 'archived' })
+    const withDone = pomodoroReducer(
+      makeState({ tasks: [done, essencial] }),
+      setDailyPlanEssentialAction(DATE, done.id, NOW),
+    )
+    const withArchived = pomodoroReducer(
+      makeState({ tasks: [archived, essencial] }),
+      addDailyPlanSecondaryAction(DATE, archived.id, NOW),
+    )
+
+    expect(withDone.dailyPlans).toEqual([])
+    expect(withArchived.dailyPlans).toEqual([])
+  })
+
+  it('archives a task while preserving past plans only', () => {
+    const past = makeDailyPlan({
+      date: '2025-12-31',
+      essentialTaskId: essencial.id,
+      secondaryTaskIds: [secundaria.id],
+    })
+    const current = makeDailyPlan({
+      date: DATE,
+      essentialTaskId: essencial.id,
+      secondaryTaskIds: [secundaria.id],
+    })
+    const future = makeDailyPlan({
+      date: '2026-01-02',
+      secondaryTaskIds: [essencial.id, secundaria.id],
+    })
+    const state = makeState({
+      tasks: [essencial, secundaria],
+      selectedTaskId: essencial.id,
+      dailyPlans: [past, current, future],
+    })
+    const result = pomodoroReducer(
+      state,
+      archiveTaskAction(essencial.id, LATER, DATE),
+    )
+
+    expect(result.tasks[0].status).toBe('archived')
+    expect(result.selectedTaskId).toBeNull()
+    expect(result.dailyPlans[0]).toEqual(past)
+    expect(result.dailyPlans[1].essentialTaskId).toBeNull()
+    expect(result.dailyPlans[1].secondaryTaskIds).toEqual([secundaria.id])
+    expect(result.dailyPlans[2].secondaryTaskIds).toEqual([secundaria.id])
+  })
+
+  it('does not archive when currentDateKey is invalid', () => {
+    const plan = makeDailyPlan({ essentialTaskId: essencial.id })
+    const state = makeState({
+      tasks: [essencial],
+      dailyPlans: [plan],
+    })
+    const result = pomodoroReducer(
+      state,
+      archiveTaskAction(essencial.id, LATER, '01-01-2026'),
+    )
+
+    expect(result).toBe(state)
+    expect(result.tasks[0].status).toBe('active')
+    expect(result.dailyPlans[0].essentialTaskId).toBe(essencial.id)
+  })
+
+  it('preserves completedAt when a done task is archived', () => {
+    const done = makeTask({
+      id: essencial.id,
+      title: essencial.title,
+      status: 'done',
+      completedAt: NOW,
+    })
+    const result = pomodoroReducer(
+      makeState({ tasks: [done] }),
+      archiveTaskAction(done.id, LATER, DATE),
+    )
+
+    expect(result.tasks[0].status).toBe('archived')
+    expect(result.tasks[0].completedAt).toBe(NOW)
+  })
+
+  it('does not let upsert erase historical references or introduce done ids', () => {
+    const done = makeTask({
+      id: essencial.id,
+      title: essencial.title,
+      status: 'done',
+      completedAt: NOW,
+    })
+    const archived = makeTask({
+      id: outra.id,
+      title: outra.title,
+      status: 'archived',
+      position: 2,
+    })
+    const state = makeState({
+      tasks: [done, secundaria, archived],
+      dailyPlans: [
+        makeDailyPlan({
+          essentialTaskId: done.id,
+          secondaryTaskIds: [secundaria.id],
+        }),
+      ],
+    })
+    const kept = pomodoroReducer(
+      state,
+      upsertDailyPlanAction({
+        date: DATE,
+        now: LATER,
+        secondaryTaskIds: [secundaria.id],
+      }),
+    )
+    const rejected = pomodoroReducer(
+      kept,
+      upsertDailyPlanAction({
+        date: DATE,
+        now: LATER,
+        essentialTaskId: archived.id,
+        secondaryTaskIds: [archived.id, secundaria.id],
+      }),
+    )
+
+    expect(kept.dailyPlans[0].essentialTaskId).toBe(done.id)
+    expect(kept.dailyPlans[0].secondaryTaskIds).toEqual([secundaria.id])
+    expect(rejected.dailyPlans[0].essentialTaskId).toBe(done.id)
+    expect(rejected.dailyPlans[0].secondaryTaskIds).toEqual([secundaria.id])
   })
 
   it('clears invalid plan references on demand', () => {

@@ -344,15 +344,44 @@ function parseV2State(raw: string, fallbackNow: string): PomodoroState | null {
   return normalizePomodoroState(parsed, fallbackNow)
 }
 
-function tasksFromCycles(cycles: Cycle[], fallbackNow: string): Task[] {
-  const uniqueNames = Array.from(
-    new Set(cycles.map((cycle) => cycle.task).filter(Boolean)),
-  )
+function uniqueCycleTaskNames(cycles: Cycle[]) {
+  const names: string[] = []
+  const seen = new Set<string>()
 
-  return uniqueNames.map((name, index) =>
+  for (const cycle of cycles) {
+    if (!cycle.task || seen.has(cycle.task)) {
+      continue
+    }
+
+    seen.add(cycle.task)
+    names.push(cycle.task)
+  }
+
+  return names
+}
+
+function stableNameHash(value: string) {
+  let hash = 2166136261
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
+function migratedV1TaskId(name: string, uniqueIndex: number) {
+  const normalized = name.trim() || name
+
+  return `v1:${uniqueIndex}:${stableNameHash(normalized)}`
+}
+
+function tasksFromCycles(cycles: Cycle[], fallbackNow: string): Task[] {
+  return uniqueCycleTaskNames(cycles).map((name, index) =>
     migrateLegacyTask(
       {
-        id: crypto.randomUUID(),
+        id: migratedV1TaskId(name, index),
         name,
         createdAt: fallbackNow,
       },
@@ -360,6 +389,23 @@ function tasksFromCycles(cycles: Cycle[], fallbackNow: string): Task[] {
       fallbackNow,
     ),
   )
+}
+
+function withMigratedCycleTaskIds(cycles: Cycle[], tasks: Task[]): Cycle[] {
+  const names = uniqueCycleTaskNames(cycles)
+  const taskIdByName = new Map(
+    names.map((name, index) => [name, tasks[index]?.id]),
+  )
+
+  return cycles.map((cycle) => {
+    const taskId = taskIdByName.get(cycle.task)
+
+    if (!taskId) {
+      return cycle
+    }
+
+    return { ...cycle, taskId }
+  })
 }
 
 function parseV1State(raw: string, fallbackNow: string): PomodoroState | null {
@@ -376,7 +422,7 @@ function parseV1State(raw: string, fallbackNow: string): PomodoroState | null {
   const tasks = tasksFromCycles(cycles, fallbackNow)
 
   return {
-    cycles,
+    cycles: withMigratedCycleTaskIds(cycles, tasks),
     activeCycleId: asNullableString(legacy.activeCycleId),
     selectedTaskId: tasks[0]?.id ?? null,
     tasks,
