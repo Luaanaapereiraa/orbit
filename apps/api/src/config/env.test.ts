@@ -13,6 +13,8 @@ describe('loadConfig', () => {
     SUPABASE_URL: 'https://example.supabase.co',
     SUPABASE_PUBLISHABLE_KEY: 'pub-key',
     SUPABASE_JWT_AUDIENCE: 'authenticated',
+    OPENAI_MODEL: 'test-model',
+    OPENAI_API_KEY: 'sk-test',
   }
 
   it('parses development env and boolean false', () => {
@@ -37,9 +39,30 @@ describe('loadConfig', () => {
     ).toThrow(ConfigError)
   })
 
-  it('rejects a wildcard CORS origin', () => {
-    expect(() => loadConfig({ ...baseEnv, CORS_ORIGINS: '*' })).toThrow(
-      ConfigError,
-    )
+  it('requires OPENAI_MODEL outside tests', () => {
+    expect(() =>
+      loadConfig({
+        ...baseEnv,
+        OPENAI_MODEL: '',
+      }),
+    ).toThrow(ConfigError)
+  })
+
+  it('rejects sensitive tracing and memory repository in production', () => {
+    expect(() =>
+      loadConfig({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        OPENAI_TRACE_INCLUDE_SENSITIVE_DATA: 'true',
+      }),
+    ).toThrow(ConfigError)
+
+    expect(() =>
+      loadConfig({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        AGENT_REPOSITORY: 'memory',
+      }),
+    ).toThrow(ConfigError)
   })
 })

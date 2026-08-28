@@ -41,6 +41,26 @@ export class AppError extends Error {
     return new AppError(429, 'RATE_LIMITED', 'Too many requests')
   }
 
+  static quotaExceeded() {
+    return new AppError(429, 'AGENT_QUOTA_EXCEEDED', 'Daily agent limit reached')
+  }
+
+  static conflict() {
+    return new AppError(409, 'CONFLICT', 'Request already in progress')
+  }
+
+  static badGateway() {
+    return new AppError(502, 'BAD_GATEWAY', 'Upstream provider returned an invalid response')
+  }
+
+  static serviceUnavailable() {
+    return new AppError(503, 'SERVICE_UNAVAILABLE', 'A required dependency is unavailable')
+  }
+
+  static gatewayTimeout() {
+    return new AppError(504, 'GATEWAY_TIMEOUT', 'The provider timed out')
+  }
+
   static internal() {
     return new AppError(500, 'INTERNAL_ERROR', 'Internal server error')
   }

@@ -44,6 +44,16 @@ export interface AppConfig {
   globalRateLimitMax: number
   agentRateLimitMax: number
   rateLimitWindowMs: number
+  openaiApiKey: string
+  openaiModel: string
+  openaiAgentPromptVersion: string
+  openaiAgentTracingEnabled: boolean
+  openaiTraceIncludeSensitiveData: boolean
+  agentTimeoutMs: number
+  agentMaxTurns: number
+  agentDailyLimit: number
+  agentRepository: 'supabase' | 'memory'
+  runLiveAgentTests: boolean
 }
 
 const booleanish = z
@@ -72,6 +82,34 @@ const EnvSchema = z.object({
   SUPABASE_URL: z.string().optional().default(''),
   SUPABASE_PUBLISHABLE_KEY: z.string().optional().default(''),
   SUPABASE_JWT_AUDIENCE: z.string().min(1).default('authenticated'),
+  OPENAI_API_KEY: z.string().optional().default(''),
+  OPENAI_MODEL: z.string().optional().default(''),
+  OPENAI_AGENT_PROMPT_VERSION: z.string().min(1).default('unlock-v1'),
+  OPENAI_AGENT_TRACING_ENABLED: z.preprocess(
+    (value) => (value === undefined || value === '' ? 'true' : value),
+    booleanish,
+  ),
+  OPENAI_TRACE_INCLUDE_SENSITIVE_DATA: z.preprocess(
+    (value) => (value === undefined || value === '' ? 'false' : value),
+    booleanish,
+  ),
+  AGENT_TIMEOUT_MS: z.preprocess(
+    (value) => (value === undefined || value === '' ? 20000 : value),
+    z.coerce.number().int().min(1000).max(120000),
+  ),
+  AGENT_MAX_TURNS: z.preprocess(
+    (value) => (value === undefined || value === '' ? 8 : value),
+    z.coerce.number().int().min(1).max(20),
+  ),
+  AGENT_DAILY_LIMIT: z.preprocess(
+    (value) => (value === undefined || value === '' ? 5 : value),
+    z.coerce.number().int().min(1).max(100),
+  ),
+  AGENT_REPOSITORY: z.enum(['supabase', 'memory']).optional(),
+  RUN_LIVE_AGENT_TESTS: z.preprocess(
+    (value) => (value === undefined || value === '' ? 'false' : value),
+    booleanish,
+  ),
 })
 
 function parseCorsOrigins(raw: string) {
@@ -140,6 +178,27 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     if (!supabasePublishableKey) {
       throw new ConfigError('SUPABASE_PUBLISHABLE_KEY is required')
     }
+    if (!parsed.OPENAI_API_KEY.trim()) {
+      throw new ConfigError('OPENAI_API_KEY is required')
+    }
+    if (!parsed.OPENAI_MODEL.trim()) {
+      throw new ConfigError('OPENAI_MODEL is required')
+    }
+    if (parsed.OPENAI_TRACE_INCLUDE_SENSITIVE_DATA) {
+      throw new ConfigError('OPENAI_TRACE_INCLUDE_SENSITIVE_DATA must be false in production')
+    }
+  }
+
+  if (parsed.NODE_ENV !== 'test' && !parsed.OPENAI_MODEL.trim()) {
+    throw new ConfigError('OPENAI_MODEL is required')
+  }
+
+  const agentRepository =
+    parsed.AGENT_REPOSITORY ??
+    (parsed.NODE_ENV === 'test' ? 'memory' : 'supabase')
+
+  if (parsed.NODE_ENV === 'production' && agentRepository !== 'supabase') {
+    throw new ConfigError('AGENT_REPOSITORY must be supabase in production')
   }
 
   if (supabaseUrl) {
@@ -167,5 +226,15 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     globalRateLimitMax: DEFAULT_GLOBAL_RATE_LIMIT_MAX,
     agentRateLimitMax: DEFAULT_AGENT_RATE_LIMIT_MAX,
     rateLimitWindowMs: DEFAULT_RATE_LIMIT_WINDOW_MS,
+    openaiApiKey: parsed.OPENAI_API_KEY.trim(),
+    openaiModel: parsed.OPENAI_MODEL.trim(),
+    openaiAgentPromptVersion: parsed.OPENAI_AGENT_PROMPT_VERSION,
+    openaiAgentTracingEnabled: parsed.OPENAI_AGENT_TRACING_ENABLED,
+    openaiTraceIncludeSensitiveData: parsed.OPENAI_TRACE_INCLUDE_SENSITIVE_DATA,
+    agentTimeoutMs: parsed.AGENT_TIMEOUT_MS,
+    agentMaxTurns: parsed.AGENT_MAX_TURNS,
+    agentDailyLimit: parsed.AGENT_DAILY_LIMIT,
+    agentRepository,
+    runLiveAgentTests: parsed.RUN_LIVE_AGENT_TESTS,
   }
 }

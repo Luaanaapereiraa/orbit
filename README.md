@@ -47,7 +47,7 @@ A PWA usa o Web App Manifest do App Router e Serwist (`@serwist/turbopack`) para
 
 ### `apps/api` (`@destravai/api`)
 
-API Node.js (Fastify 5). Sobe à parte da web. Endpoints atuais: `GET /health`, `GET /ready` (públicos) e `GET /v1/me` (JWT Supabase). Não há endpoint de IA nesta entrega.
+API Node.js (Fastify 5). Sobe à parte da web. Endpoints: `GET /health`, `GET /ready` (públicos), `GET /v1/me` (JWT Supabase) e `POST /v1/agents/unlock-task/runs` (agente Destravar tarefa). A web ainda não consome esse agente.
 
 Node.js `>=20.9`. Copie `apps/api/.env.example` para `apps/api/.env` (ou um `.env` na raiz ao rodar o processo). Arquivos `.env` não entram no git.
 
@@ -58,7 +58,8 @@ npm run dev:api
 - Health: `GET http://localhost:3333/health`
 - Ready: `GET http://localhost:3333/ready`
 - Auth: `Authorization: Bearer <access token do Supabase>`. A API verifica a assinatura via JWKS (não só decodifica).
-- Rate limit: por IP em memória, adequado a **uma instância**. `/health` e `/ready` ficam fora da cota do agente. Réplicas precisam de store compartilhado. Cota diária por usuário ainda não existe.
+- Agente: `POST /v1/agents/unlock-task/runs`. O plano é salvo só como sugestão; aplicar na tarefa é etapa da interface.
+- Rate limit: por IP em memória, adequado a **uma instância**. `/health` e `/ready` ficam fora da cota do prefixo de agentes. Há cota diária por usuário (UTC) no banco.
 - Docs: Swagger UI só com `ENABLE_API_DOCS=true`.
 
 Detalhes em `apps/api/README.md`.
@@ -69,11 +70,11 @@ Lógica pura, independente de plataforma: tipos, reducer, actions (incluindo hid
 
 ### `packages/contracts` (`@destravai/contracts`)
 
-Schemas Zod e tipos inferidos para HTTP (pedido/resposta do futuro Unlock Task Run, erros, health). Sem React, Fastify, DOM ou banco. Consumo: `import { ... } from '@destravai/contracts'`.
+Schemas Zod e tipos inferidos para HTTP (pedido/resposta do Unlock Task Run, erros, health). Sem React, Fastify, DOM ou banco. Consumo: `import { ... } from '@destravai/contracts'`.
 
 ### `supabase/`
 
-Migrations locais de `agent_runs` e `unlock_plans` com RLS. Não são aplicadas neste passo. Validar depois com a CLI do Supabase (`supabase db lint` / ambiente local). `agent_runs` não guarda título da tarefa nem texto de bloqueio; `unlock_plans` guarda o plano gerado.
+Migrations locais de `agent_runs`, `unlock_plans` e `agent_daily_usage` com RLS. Aplicar com a CLI do Supabase no ambiente local. `agent_runs` não guarda título da tarefa nem texto de bloqueio; `unlock_plans` guarda a sugestão gerada.
 
 ## Requisitos
 

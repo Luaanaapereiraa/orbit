@@ -18,15 +18,14 @@ export async function registerOpenApi(app: FastifyInstance) {
         title: 'DestravAI API',
         version: serviceVersion,
         description:
-          'HTTP API for DestravAI. Agent execution is not available in this version.',
+          'HTTP API for DestravAI, including the authenticated unlock-task agent.',
       },
       tags: [
         { name: 'Health', description: 'Liveness and readiness probes' },
         { name: 'Auth', description: 'Authenticated identity' },
         {
           name: 'Agent',
-          description:
-            'Contract schemas for a future unlock agent. No execution route is exposed yet.',
+          description: 'Unlock-task agent. Generates a short executable plan.',
         },
       ],
       components: openApiComponents as never,

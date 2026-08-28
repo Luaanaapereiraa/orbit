@@ -44,9 +44,51 @@ export function registerErrorHandlers(app: FastifyInstance) {
     const statusCode = statusCodeOf(error)
 
     if (statusCode === 429 || error.code === 'RATE_LIMITED') {
+      const code =
+        isAppError(error) && error.code === 'AGENT_QUOTA_EXCEEDED'
+          ? 'AGENT_QUOTA_EXCEEDED'
+          : 'RATE_LIMITED'
+      const message =
+        code === 'AGENT_QUOTA_EXCEEDED'
+          ? 'Daily agent limit reached'
+          : 'Too many requests'
+      return reply.status(429).send(errorPayload(requestId, code, message))
+    }
+
+    if (statusCode === 409) {
       return reply
-        .status(429)
-        .send(errorPayload(requestId, 'RATE_LIMITED', 'Too many requests'))
+        .status(409)
+        .send(errorPayload(requestId, 'CONFLICT', 'Request already in progress'))
+    }
+
+    if (statusCode === 502) {
+      return reply
+        .status(502)
+        .send(
+          errorPayload(
+            requestId,
+            'BAD_GATEWAY',
+            'Upstream provider returned an invalid response',
+          ),
+        )
+    }
+
+    if (statusCode === 503) {
+      return reply
+        .status(503)
+        .send(
+          errorPayload(
+            requestId,
+            'SERVICE_UNAVAILABLE',
+            'A required dependency is unavailable',
+          ),
+        )
+    }
+
+    if (statusCode === 504) {
+      return reply
+        .status(504)
+        .send(errorPayload(requestId, 'GATEWAY_TIMEOUT', 'The provider timed out'))
     }
 
     if (statusCode === 401 || error.code === 'UNAUTHORIZED') {

@@ -47,7 +47,7 @@ describe('rate limit', () => {
     }
   })
 
-  it('applies a stricter limit to the future /v1/agents prefix', async () => {
+  it('applies a stricter limit to the /v1/agents prefix', async () => {
     app = await buildTestApp({
       config: {
         globalRateLimitMax: 100,
@@ -55,12 +55,24 @@ describe('rate limit', () => {
       },
     })
 
-    const first = await app.inject({ method: 'GET', url: '/v1/agents/future' })
-    const second = await app.inject({ method: 'GET', url: '/v1/agents/future' })
-    const third = await app.inject({ method: 'GET', url: '/v1/agents/future' })
+    const first = await app.inject({
+      method: 'POST',
+      url: '/v1/agents/unlock-task/runs',
+      payload: {},
+    })
+    const second = await app.inject({
+      method: 'POST',
+      url: '/v1/agents/unlock-task/runs',
+      payload: {},
+    })
+    const third = await app.inject({
+      method: 'POST',
+      url: '/v1/agents/unlock-task/runs',
+      payload: {},
+    })
 
-    expect(first.statusCode).toBe(404)
-    expect(second.statusCode).toBe(404)
+    expect(first.statusCode).toBe(401)
+    expect(second.statusCode).toBe(401)
     expect(third.statusCode).toBe(429)
   })
 })

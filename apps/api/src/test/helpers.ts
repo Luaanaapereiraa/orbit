@@ -1,9 +1,21 @@
 import { generateKeyPair, SignJWT, type GenerateKeyPairResult } from 'jose'
 import { Writable } from 'node:stream'
+import {
+  UnlockPlanSchema,
+  type UnlockPlan,
+  type UnlockTaskRunRequest,
+} from '@destravai/contracts'
 import { buildApp, type BuildAppOptions } from '../app.js'
 import { createLocalJwtVerifier } from '../auth/jwt-verifier.js'
 import type { JwtVerifier } from '../auth/types.js'
 import { loadConfig, type AppConfig } from '../config/env.js'
+import { readTrustedTaskContext } from '../agents/unlock-task/tools/get-task-context.js'
+import { applyValidatedPlan } from '../agents/unlock-task/tools/validate-unlock-plan.js'
+import { saveValidatedUnlockPlan } from '../agents/unlock-task/tools/save-unlock-plan.js'
+import type { UnlockAgentRunner } from '../agents/unlock-task/runner.js'
+import type { ContentModerator } from '../agents/unlock-task/guardrails/input.js'
+import type { AgentRunRepository } from '../agents/unlock-task/repositories/types.js'
+import { MemoryAgentRunRepository } from '../agents/unlock-task/repositories/memory.js'
 
 export const TEST_ISSUER = 'https://example.supabase.co/auth/v1'
 export const TEST_AUDIENCE = 'authenticated'
@@ -99,6 +111,12 @@ export async function buildTestApp(
     jwtVerifier?: JwtVerifier
     logger?: BuildAppOptions['logger']
     includeTestRoutes?: boolean
+    unlockAgentRunner?: UnlockAgentRunner
+    contentModerator?: ContentModerator
+    unlockRepositoryFactory?: (input: {
+      userId: string
+      accessToken: string
+    }) => AgentRunRepository
   } = {},
 ) {
   const app = await buildApp({
@@ -106,6 +124,70 @@ export async function buildTestApp(
     jwtVerifier: overrides.jwtVerifier ?? stubVerifier,
     logger: overrides.logger ?? false,
     includeTestRoutes: overrides.includeTestRoutes ?? true,
+    unlockAgentRunner: overrides.unlockAgentRunner,
+    contentModerator: overrides.contentModerator,
+    unlockRepositoryFactory: overrides.unlockRepositoryFactory,
   })
   return app
+}
+
+export function validUnlockRequest(
+  overrides: Partial<UnlockTaskRunRequest> = {},
+): UnlockTaskRunRequest {
+  return {
+    clientRequestId: '550e8400-e29b-41d4-a716-446655440000',
+    task: {
+      id: 'task-1',
+      title: 'Preparar apresentacao',
+      nextAction: null,
+      energy: 'medium',
+      estimatedMinutes: 60,
+      status: 'active',
+    },
+    blockageReason: 'dont_know_where_to_start',
+    blockageDetails: null,
+    availableMinutes: 20,
+    currentEnergy: 'medium',
+    today: {
+      date: '2026-08-28',
+      role: 'essential',
+      plannedTaskCount: 1,
+    },
+    locale: 'pt-BR',
+    ...overrides,
+  }
+}
+
+export function validUnlockPlan(
+  overrides: Record<string, unknown> = {},
+): UnlockPlan {
+  return UnlockPlanSchema.parse({
+    title: 'Comecar a apresentacao',
+    summary: 'Dois passos pequenos para sair do zero.',
+    nextAction: 'Abrir o arquivo e escrever o titulo',
+    steps: [
+      { order: 1, title: 'Abrir o arquivo', minutes: 5 },
+      { order: 2, title: 'Escrever o titulo', minutes: 15 },
+    ],
+    totalMinutes: 20,
+    recommendedFocusMinutes: 20,
+    energy: 'medium',
+    supportiveMessage: 'Um passo pequeno ja conta.',
+    ...overrides,
+  })
+}
+
+export function createCompletedRunner(plan: UnlockPlan = validUnlockPlan()): UnlockAgentRunner {
+  return {
+    async run(context) {
+      readTrustedTaskContext(context)
+      applyValidatedPlan(context, plan)
+      await saveValidatedUnlockPlan(context, plan)
+      return { output: { status: 'completed', plan } }
+    },
+  }
+}
+
+export function createMemoryUnlockRepo() {
+  return new MemoryAgentRunRepository()
 }

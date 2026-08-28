@@ -6,6 +6,10 @@ import { randomUUID } from 'node:crypto'
 import { createRemoteJwksVerifier } from './auth/jwt-verifier.js'
 import type { JwtVerifier } from './auth/types.js'
 import type { AppConfig } from './config/env.js'
+import { MemoryAgentRunRepository } from './agents/unlock-task/repositories/memory.js'
+import type { UnlockAgentRunner } from './agents/unlock-task/runner.js'
+import type { ContentModerator } from './agents/unlock-task/guardrails/input.js'
+import type { AgentRunRepository } from './agents/unlock-task/repositories/types.js'
 import { AppError } from './errors/app-error.js'
 import { parseUnlockTaskRunRequest, zodDetails } from './errors/validation.js'
 import { registerCors } from './plugins/cors.js'
@@ -14,7 +18,7 @@ import { createLoggerOptions } from './plugins/logger.js'
 import { registerRateLimit } from './plugins/rate-limit.js'
 import { registerSecurityHeaders } from './plugins/security.js'
 import { registerOpenApi } from './plugins/swagger.js'
-import { registerAgentPrefix } from './routes/agent-prefix.js'
+import { registerUnlockTaskRoute } from './routes/agents/unlock-task.js'
 import { registerHealthRoutes } from './routes/health.js'
 import { registerMeRoute } from './routes/me.js'
 
@@ -23,6 +27,12 @@ export interface BuildAppOptions {
   jwtVerifier?: JwtVerifier
   logger?: FastifyServerOptions['logger']
   includeTestRoutes?: boolean
+  unlockAgentRunner?: UnlockAgentRunner
+  contentModerator?: ContentModerator
+  unlockRepositoryFactory?: (input: {
+    userId: string
+    accessToken: string
+  }) => AgentRunRepository
 }
 
 function resolveLogger(
@@ -62,12 +72,35 @@ export async function buildApp(
     genReqId: () => randomUUID(),
   })
 
+  // Keep JSON bodies intact (including nulls) so Zod, not AJV, validates contracts.
+  app.setValidatorCompiler(() => {
+    return (data: unknown) => ({ value: data })
+  })
+
   app.decorate('appConfig', config)
   app.decorate(
     'jwtVerifier',
     options.jwtVerifier ?? createRemoteJwksVerifier(config),
   )
   app.decorateRequest('authUser', null)
+  if (options.unlockAgentRunner) {
+    app.decorate('unlockAgentRunner', options.unlockAgentRunner)
+  } else if (config.nodeEnv === 'test') {
+    app.decorate('unlockAgentRunner', {
+      async run() {
+        throw new Error('unlockAgentRunner must be injected in tests')
+      },
+    } satisfies UnlockAgentRunner)
+  }
+  if (options.contentModerator) {
+    app.decorate('contentModerator', options.contentModerator)
+  }
+  if (options.unlockRepositoryFactory) {
+    app.decorate('unlockRepositoryFactory', options.unlockRepositoryFactory)
+  }
+  if (config.agentRepository === 'memory') {
+    app.decorate('memoryAgentRepository', new MemoryAgentRunRepository())
+  }
   registerErrorHandlers(app)
 
   app.addHook('onSend', async (request, reply) => {
@@ -80,7 +113,7 @@ export async function buildApp(
   await registerOpenApi(app)
   await registerHealthRoutes(app)
   await registerMeRoute(app)
-  await registerAgentPrefix(app)
+  await registerUnlockTaskRoute(app)
 
   if (options.includeTestRoutes) {
     app.post('/__test__/validate', async (request) => {

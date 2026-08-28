@@ -62,6 +62,8 @@ const unlockPlan = {
   type: 'object',
   additionalProperties: false,
   required: [
+    'title',
+    'summary',
     'nextAction',
     'steps',
     'totalMinutes',
@@ -70,6 +72,8 @@ const unlockPlan = {
     'supportiveMessage',
   ],
   properties: {
+    title: { type: 'string' },
+    summary: { type: 'string' },
     nextAction: { type: 'string' },
     steps: {
       type: 'array',
@@ -136,7 +140,9 @@ export const openApiComponents = {
           properties: {
             id: { type: 'string' },
             title: { type: 'string' },
-            nextAction: { type: 'null' },
+            nextAction: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
             energy: {
               anyOf: [
                 { type: 'string', enum: ['low', 'medium', 'high'] },
@@ -188,12 +194,20 @@ export const openApiComponents = {
         {
           type: 'object',
           additionalProperties: false,
-          required: ['runId', 'status', 'plan', 'promptVersion', 'createdAt'],
+          required: [
+            'runId',
+            'status',
+            'plan',
+            'promptVersion',
+            'generationMode',
+            'createdAt',
+          ],
           properties: {
             runId: { type: 'string', format: 'uuid' },
             status: { type: 'string', enum: ['completed'] },
             plan: unlockPlan,
             promptVersion: { type: 'string' },
+            generationMode: { type: 'string', enum: ['agent', 'fallback'] },
             createdAt: { type: 'string', format: 'date-time' },
           },
         },
@@ -231,7 +245,7 @@ export const openApiComponents = {
             status: { type: 'string', enum: ['rejected'] },
             reason: {
               type: 'string',
-              enum: ['unsafe_input', 'unsupported_request'],
+              enum: ['safety', 'unsafe_input', 'unsupported_request'],
             },
             message: { type: 'string' },
             promptVersion: { type: 'string' },
@@ -246,3 +260,7 @@ export const openApiComponents = {
 export const healthResponseSchema = healthResponse
 export const apiErrorResponseSchema = apiErrorResponse
 export const meResponseSchema = meResponse
+export const unlockTaskRunRequestSchema =
+  openApiComponents.schemas.UnlockTaskRunRequest
+export const unlockTaskRunResponseSchema =
+  openApiComponents.schemas.UnlockTaskRunResponse

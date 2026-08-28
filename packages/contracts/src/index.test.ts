@@ -310,11 +310,34 @@ describe('UnlockTaskRunResponseSchema', () => {
     expect(parsed.status).toBe('rejected')
   })
 
+  it('accepts a completed response with fallback generation mode', () => {
+    const parsed = UnlockTaskRunResponseSchema.parse({
+      runId,
+      status: 'completed',
+      plan: validPlan(),
+      promptVersion: 'unlock-v1',
+      generationMode: 'fallback',
+      createdAt,
+    })
+    expect(parsed.status).toBe('completed')
+  })
+
+  it('rejects a completed response without generationMode', () => {
+    expectInvalid(UnlockTaskRunResponseSchema, {
+      runId,
+      status: 'completed',
+      plan: validPlan(),
+      promptVersion: 'unlock-v1',
+      createdAt,
+    })
+  })
+
   it('rejects a completed response without a plan', () => {
     expectInvalid(UnlockTaskRunResponseSchema, {
       runId,
       status: 'completed',
       promptVersion: 'unlock-v1',
+      generationMode: 'agent',
       createdAt,
     })
   })
