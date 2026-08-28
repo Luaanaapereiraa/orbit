@@ -59,10 +59,12 @@ export {
 } from './tasks'
 export {
   canTaskEnterPlan,
+  canTaskRemainInPlan,
   formatLocalDateKey,
   getDailyPlanByDate,
   isValidLocalDateKey,
   normalizePlanIds,
+  removeTaskFromCurrentAndFuturePlans,
   resolvePlanTasks,
   sanitizeDailyPlan,
 } from './daily-plan'

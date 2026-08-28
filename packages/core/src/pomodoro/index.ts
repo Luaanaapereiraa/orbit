@@ -1,7 +1,9 @@
 import {
   addDailyPlanSecondary,
   clearInvalidPlanReferences,
+  isValidLocalDateKey,
   removeDailyPlanSecondary,
+  removeTaskFromCurrentAndFuturePlans,
   removeTaskFromPlans,
   setDailyPlanEssential,
   upsertDailyPlan,
@@ -334,11 +336,7 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
       return withTasksAndPlans(
         state,
         tasks,
-        removeTaskFromPlans(
-          state.dailyPlans,
-          action.payload.taskId,
-          action.payload.now,
-        ),
+        state.dailyPlans,
         selectedIfVisible(tasks, state.selectedTaskId),
       )
     }
@@ -350,11 +348,16 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
           state.tasks,
           action.payload.taskId,
           action.payload.now,
+          action.payload.destination,
         ),
         state.dailyPlans,
       )
 
     case ActionTypes.ARCHIVE_TASK: {
+      if (!isValidLocalDateKey(action.payload.currentDateKey)) {
+        return state
+      }
+
       const tasks = archiveTaskInList(
         state.tasks,
         action.payload.taskId,
@@ -368,9 +371,10 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
       return withTasksAndPlans(
         state,
         tasks,
-        removeTaskFromPlans(
+        removeTaskFromCurrentAndFuturePlans(
           state.dailyPlans,
           action.payload.taskId,
+          action.payload.currentDateKey,
           action.payload.now,
         ),
         selectedIfVisible(tasks, state.selectedTaskId),

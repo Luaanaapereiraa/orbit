@@ -54,6 +54,12 @@ export function isValidLocalDateKey(value: string) {
   )
 }
 
+/**
+ * Formats a local calendar date as `YYYY-MM-DD`.
+ * `month` is 1–12 (not the 0-based index from `Date#getMonth()`).
+ * Callers that have a `Date` must pass `getMonth() + 1`.
+ * Does not use UTC conversion (`toISOString()`).
+ */
 export function formatLocalDateKey(
   year: number,
   month: number,

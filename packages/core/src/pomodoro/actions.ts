@@ -150,17 +150,25 @@ export function completeTaskAction(
   }
 }
 
-export function reopenTaskAction(taskId: string, now: string): PomodoroAction {
+export function reopenTaskAction(
+  taskId: string,
+  now: string,
+  destination: 'active' | 'inbox',
+): PomodoroAction {
   return {
     type: ActionTypes.REOPEN_TASK,
-    payload: { taskId, now },
+    payload: { taskId, now, destination },
   }
 }
 
-export function archiveTaskAction(taskId: string, now: string): PomodoroAction {
+export function archiveTaskAction(
+  taskId: string,
+  now: string,
+  currentDateKey: string,
+): PomodoroAction {
   return {
     type: ActionTypes.ARCHIVE_TASK,
-    payload: { taskId, now },
+    payload: { taskId, now, currentDateKey },
   }
 }
 

@@ -342,13 +342,18 @@ export function reopenTaskInList(
   tasks: Task[],
   taskId: string,
   now: string,
+  destination: 'active' | 'inbox',
 ) {
+  if (destination !== 'active' && destination !== 'inbox') {
+    return tasks
+  }
+
   return patchTask(tasks, taskId, now, (task) => {
     if (task.status !== 'done') {
       return task
     }
 
-    return { ...task, status: 'active', completedAt: null }
+    return { ...task, status: destination, completedAt: null }
   })
 }
 

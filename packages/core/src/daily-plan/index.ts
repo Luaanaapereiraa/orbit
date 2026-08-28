@@ -1,11 +1,45 @@
 import type { Task } from '../tasks/types'
-import { canTaskEnterPlan } from './eligibility'
+import { canTaskEnterPlan, canTaskRemainInPlan } from './eligibility'
 import { isValidLocalDateKey } from './date-key'
 import type { DailyPlan } from './types'
 
 export type { DailyPlan }
-export { canTaskEnterPlan } from './eligibility'
+export { canTaskEnterPlan, canTaskRemainInPlan } from './eligibility'
 export { formatLocalDateKey, isValidLocalDateKey } from './date-key'
+
+function tasksById(tasks: Task[]) {
+  return new Map(tasks.map((task) => [task.id, task]))
+}
+
+function isAcceptablePlanRef(
+  taskId: string,
+  previousIds: Set<string>,
+  byId: Map<string, Task>,
+) {
+  const task = byId.get(taskId)
+
+  return previousIds.has(taskId)
+    ? canTaskRemainInPlan(task)
+    : canTaskEnterPlan(task)
+}
+
+function previousPlanIds(plan: DailyPlan | null) {
+  const ids = new Set<string>()
+
+  if (!plan) {
+    return ids
+  }
+
+  if (plan.essentialTaskId) {
+    ids.add(plan.essentialTaskId)
+  }
+
+  for (const id of plan.secondaryTaskIds) {
+    ids.add(id)
+  }
+
+  return ids
+}
 
 export function getDailyPlanByDate(plans: DailyPlan[], date: string) {
   if (!isValidLocalDateKey(date)) {
@@ -39,12 +73,12 @@ export function normalizePlanIds(plan: DailyPlan): DailyPlan {
 }
 
 export function sanitizeDailyPlan(plan: DailyPlan, tasks: Task[]): DailyPlan {
-  const byId = new Map(tasks.map((task) => [task.id, task]))
+  const byId = tasksById(tasks)
   const normalized = normalizePlanIds(plan)
   const essentialTask = normalized.essentialTaskId
     ? byId.get(normalized.essentialTaskId)
     : undefined
-  const essentialTaskId = canTaskEnterPlan(essentialTask)
+  const essentialTaskId = canTaskRemainInPlan(essentialTask)
     ? essentialTask.id
     : null
   const secondaryTaskIds = normalized.secondaryTaskIds.filter((id) => {
@@ -52,7 +86,7 @@ export function sanitizeDailyPlan(plan: DailyPlan, tasks: Task[]): DailyPlan {
       return false
     }
 
-    return canTaskEnterPlan(byId.get(id))
+    return canTaskRemainInPlan(byId.get(id))
   })
 
   return {
@@ -63,7 +97,7 @@ export function sanitizeDailyPlan(plan: DailyPlan, tasks: Task[]): DailyPlan {
 }
 
 export function resolvePlanTasks(plan: DailyPlan, tasks: Task[]) {
-  const byId = new Map(tasks.map((task) => [task.id, task]))
+  const byId = tasksById(tasks)
   const essential = plan.essentialTaskId
     ? byId.get(plan.essentialTaskId) ?? null
     : null
@@ -81,6 +115,45 @@ export function removeTaskFromPlans(
 ) {
   let changed = false
   const next = plans.map((plan) => {
+    const essentialTaskId =
+      plan.essentialTaskId === taskId ? null : plan.essentialTaskId
+    const secondaryTaskIds = plan.secondaryTaskIds.filter((id) => id !== taskId)
+
+    if (
+      essentialTaskId === plan.essentialTaskId &&
+      secondaryTaskIds.length === plan.secondaryTaskIds.length
+    ) {
+      return plan
+    }
+
+    changed = true
+    return {
+      ...plan,
+      essentialTaskId,
+      secondaryTaskIds,
+      updatedAt: now,
+    }
+  })
+
+  return changed ? next : plans
+}
+
+export function removeTaskFromCurrentAndFuturePlans(
+  plans: DailyPlan[],
+  taskId: string,
+  currentDateKey: string,
+  now: string,
+) {
+  if (!isValidLocalDateKey(currentDateKey)) {
+    return plans
+  }
+
+  let changed = false
+  const next = plans.map((plan) => {
+    if (plan.date < currentDateKey) {
+      return plan
+    }
+
     const essentialTaskId =
       plan.essentialTaskId === taskId ? null : plan.essentialTaskId
     const secondaryTaskIds = plan.secondaryTaskIds.filter((id) => id !== taskId)
@@ -148,16 +221,55 @@ export function upsertDailyPlan(
   }
 
   const existing = getDailyPlanByDate(plans, input.date)
+  const byId = tasksById(tasks)
+  const previousIds = previousPlanIds(existing)
+  const requestedEssential =
+    input.essentialTaskId !== undefined
+      ? input.essentialTaskId
+      : existing?.essentialTaskId ?? null
+  const requestedSecondaries =
+    input.secondaryTaskIds !== undefined
+      ? input.secondaryTaskIds
+      : existing?.secondaryTaskIds ?? []
+
+  let essentialTaskId: string | null = null
+
+  if (requestedEssential === null) {
+    essentialTaskId = null
+  } else if (isAcceptablePlanRef(requestedEssential, previousIds, byId)) {
+    essentialTaskId = requestedEssential
+  } else if (
+    existing?.essentialTaskId &&
+    existing.essentialTaskId !== requestedEssential &&
+    canTaskRemainInPlan(byId.get(existing.essentialTaskId))
+  ) {
+    essentialTaskId = existing.essentialTaskId
+  }
+
+  const seen = new Set<string>()
+  const secondaryTaskIds: string[] = []
+
+  for (const id of requestedSecondaries) {
+    if (!id || id === essentialTaskId || seen.has(id)) {
+      continue
+    }
+
+    if (!isAcceptablePlanRef(id, previousIds, byId)) {
+      continue
+    }
+
+    seen.add(id)
+    secondaryTaskIds.push(id)
+
+    if (secondaryTaskIds.length === 2) {
+      break
+    }
+  }
+
   const draft: DailyPlan = {
     date: input.date,
-    essentialTaskId:
-      input.essentialTaskId !== undefined
-        ? input.essentialTaskId
-        : existing?.essentialTaskId ?? null,
-    secondaryTaskIds:
-      input.secondaryTaskIds !== undefined
-        ? input.secondaryTaskIds
-        : existing?.secondaryTaskIds ?? [],
+    essentialTaskId,
+    secondaryTaskIds,
     createdAt: existing?.createdAt ?? input.now,
     updatedAt: input.now,
   }

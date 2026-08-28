@@ -149,11 +149,15 @@ export type PomodoroAction =
     }
   | {
       type: typeof ActionTypes.REOPEN_TASK
-      payload: { taskId: string; now: string }
+      payload: {
+        taskId: string
+        now: string
+        destination: 'active' | 'inbox'
+      }
     }
   | {
       type: typeof ActionTypes.ARCHIVE_TASK
-      payload: { taskId: string; now: string }
+      payload: { taskId: string; now: string; currentDateKey: string }
     }
   | {
       type: typeof ActionTypes.UPSERT_DAILY_PLAN
