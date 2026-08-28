@@ -30,3 +30,8 @@ dist-ssr
 apps/web/public/sw*
 apps/web/public/swe-worker*
 
+# Env files (keep examples)
+.env
+.env.*
+!.env.example
+

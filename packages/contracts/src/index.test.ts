@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import {
   ApiErrorResponseSchema,
   BLOCKAGE_DETAILS_MAX_LENGTH,
@@ -54,18 +55,17 @@ function validPlan(overrides: Record<string, unknown> = {}): UnlockPlan {
   })
 }
 
-function expectInvalid(
-  schema: { safeParse: (data: unknown) => { success: boolean; error?: { issues: { message: string }[] } } },
-  data: unknown,
-) {
+function expectInvalid(schema: z.ZodTypeAny, data: unknown) {
   const result = schema.safeParse(data)
   expect(result.success).toBe(false)
-  if (!result.success) {
-    for (const issue of result.error.issues) {
-      expect([publicValidationMessage, unknownFieldMessage]).toContain(
-        issue.message,
-      )
-    }
+  if (result.success) {
+    return
+  }
+
+  for (const issue of result.error.issues) {
+    expect([publicValidationMessage, unknownFieldMessage]).toContain(
+      issue.message,
+    )
   }
 }
 

@@ -1,10 +1,7 @@
-import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { FastifyRequest } from 'fastify'
 import { AppError } from '../errors/app-error.js'
 
-export async function authenticate(
-  request: FastifyRequest,
-  _reply: FastifyReply,
-) {
+export async function authenticate(request: FastifyRequest) {
   const header = request.headers.authorization
 
   if (!header) {

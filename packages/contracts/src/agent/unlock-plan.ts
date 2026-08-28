@@ -29,9 +29,9 @@ export const UnlockPlanSchema = publicObject({
     .min(1)
     .max(NEXT_ACTION_MAX_LENGTH),
   steps: z
-    .array(UnlockPlanStepSchema)
-    .min(MIN_UNLOCK_PLAN_STEPS)
-    .max(MAX_UNLOCK_PLAN_STEPS),
+    .array(UnlockPlanStepSchema, { errorMap: publicErrorMap })
+    .min(MIN_UNLOCK_PLAN_STEPS, { message: publicValidationMessage })
+    .max(MAX_UNLOCK_PLAN_STEPS, { message: publicValidationMessage }),
   totalMinutes: z.number({ errorMap: publicErrorMap }).int().positive(),
   recommendedFocusMinutes: z
     .number({ errorMap: publicErrorMap })
