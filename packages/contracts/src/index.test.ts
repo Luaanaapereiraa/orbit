@@ -42,6 +42,8 @@ function validRequest(
 
 function validPlan(overrides: Record<string, unknown> = {}): UnlockPlan {
   return UnlockPlanSchema.parse({
+    title: 'Comecar a apresentacao',
+    summary: 'Dois passos pequenos para sair do zero.',
     nextAction: 'Abrir o arquivo de testes e escrever o primeiro caso',
     steps: [
       { order: 1, title: 'Abrir o arquivo', minutes: 5 },
@@ -172,14 +174,17 @@ describe('UnlockTaskRunRequestSchema', () => {
     })
   })
 
-  it('rejects a non-null nextAction on the task context', () => {
-    expectInvalid(UnlockTaskRunRequestSchema, {
+  it('accepts a filled nextAction on the task context', () => {
+    const parsed = UnlockTaskRunRequestSchema.parse({
       ...validRequest(),
       task: {
         ...validRequest().task,
-        nextAction: 'Ja sei o proximo passo',
+        nextAction: 'Abrir o documento e escrever o primeiro paragrafo',
       },
     })
+    expect(parsed.task.nextAction).toBe(
+      'Abrir o documento e escrever o primeiro paragrafo',
+    )
   })
 })
 
@@ -276,6 +281,7 @@ describe('UnlockTaskRunResponseSchema', () => {
       status: 'completed',
       plan: validPlan(),
       promptVersion: 'unlock-v1',
+      generationMode: 'agent',
       createdAt,
     })
     expect(parsed.status).toBe('completed')
@@ -296,7 +302,7 @@ describe('UnlockTaskRunResponseSchema', () => {
     const parsed = UnlockTaskRunResponseSchema.parse({
       runId,
       status: 'rejected',
-      reason: 'unsafe_input',
+      reason: 'safety',
       message: 'Nao foi possivel continuar com esse pedido.',
       promptVersion: 'unlock-v1',
       createdAt,

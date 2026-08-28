@@ -14,6 +14,7 @@ export {
   UnlockTaskRunRejectedSchema,
   UnlockTaskRunRejectionReasonSchema,
   UnlockTaskRunResponseSchema,
+  GenerationModeSchema,
 } from './unlock-response'
 export type {
   UnlockTaskRunCompleted,
@@ -21,4 +22,5 @@ export type {
   UnlockTaskRunRejected,
   UnlockTaskRunRejectionReason,
   UnlockTaskRunResponse,
+  GenerationMode,
 } from './unlock-response'

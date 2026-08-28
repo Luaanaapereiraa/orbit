@@ -16,15 +16,20 @@ const PromptVersionSchema = z
   .max(PROMPT_VERSION_MAX_LENGTH)
 
 export const UnlockTaskRunRejectionReasonSchema = z.enum(
-  ['unsafe_input', 'unsupported_request'],
+  ['safety', 'unsafe_input', 'unsupported_request'],
   { errorMap: publicErrorMap },
 )
+
+export const GenerationModeSchema = z.enum(['agent', 'fallback'], {
+  errorMap: publicErrorMap,
+})
 
 export const UnlockTaskRunCompletedSchema = publicObject({
   runId: UuidSchema,
   status: z.literal('completed', { errorMap: publicErrorMap }),
   plan: UnlockPlanSchema,
   promptVersion: PromptVersionSchema,
+  generationMode: GenerationModeSchema,
   createdAt: IsoTimestampSchema,
 })
 
@@ -63,6 +68,7 @@ export const UnlockTaskRunResponseSchema = z.discriminatedUnion(
   { errorMap: publicErrorMap },
 )
 
+export type GenerationMode = z.infer<typeof GenerationModeSchema>
 export type UnlockTaskRunRejectionReason = z.infer<
   typeof UnlockTaskRunRejectionReasonSchema
 >

@@ -6,6 +6,8 @@ import {
   MIN_RECOMMENDED_FOCUS_MINUTES,
   MIN_UNLOCK_PLAN_STEPS,
   NEXT_ACTION_MAX_LENGTH,
+  PLAN_SUMMARY_MAX_LENGTH,
+  PLAN_TITLE_MAX_LENGTH,
   STEP_TITLE_MAX_LENGTH,
   SUPPORTIVE_MESSAGE_MAX_LENGTH,
 } from '../common/limits'
@@ -23,6 +25,16 @@ export const UnlockPlanStepSchema = publicObject({
 })
 
 export const UnlockPlanSchema = publicObject({
+  title: z
+    .string({ errorMap: publicErrorMap })
+    .trim()
+    .min(1)
+    .max(PLAN_TITLE_MAX_LENGTH),
+  summary: z
+    .string({ errorMap: publicErrorMap })
+    .trim()
+    .min(1)
+    .max(PLAN_SUMMARY_MAX_LENGTH),
   nextAction: z
     .string({ errorMap: publicErrorMap })
     .trim()

@@ -1,5 +1,7 @@
 export {
   TITLE_MAX_LENGTH,
+  PLAN_TITLE_MAX_LENGTH,
+  PLAN_SUMMARY_MAX_LENGTH,
   BLOCKAGE_DETAILS_MAX_LENGTH,
   STEP_TITLE_MAX_LENGTH,
   NEXT_ACTION_MAX_LENGTH,
@@ -45,6 +47,7 @@ export {
   UnlockTaskRunRejectedSchema,
   UnlockTaskRunRejectionReasonSchema,
   UnlockTaskRunResponseSchema,
+  GenerationModeSchema,
 } from './agent'
 export type {
   BlockageReason,
@@ -60,6 +63,7 @@ export type {
   UnlockTaskRunRejected,
   UnlockTaskRunRejectionReason,
   UnlockTaskRunResponse,
+  GenerationMode,
 } from './agent'
 
 export { HealthResponseSchema, HealthStatusSchema } from './health'

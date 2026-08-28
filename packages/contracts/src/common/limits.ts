@@ -1,4 +1,6 @@
 export const TITLE_MAX_LENGTH = 200
+export const PLAN_TITLE_MAX_LENGTH = 80
+export const PLAN_SUMMARY_MAX_LENGTH = 200
 export const BLOCKAGE_DETAILS_MAX_LENGTH = 1000
 export const STEP_TITLE_MAX_LENGTH = 80
 export const NEXT_ACTION_MAX_LENGTH = 160
