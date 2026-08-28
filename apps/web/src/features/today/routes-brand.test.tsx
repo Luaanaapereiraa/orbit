@@ -18,14 +18,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('next/link', () => ({
-  default({
-    href,
-    children,
-    ...props
-  }: {
-    href: string
-    children: ReactNode
-  }) {
+  default({ href, children, ...props }: { href: string; children: ReactNode }) {
     return (
       <a href={href} {...props}>
         {children}
@@ -89,9 +82,9 @@ describe('brand and routes', () => {
       'aria-current',
       'page',
     )
-    expect(screen.getAllByRole('link', { name: 'Hoje' })[0]).not.toHaveAttribute(
-      'aria-current',
-    )
+    expect(
+      screen.getAllByRole('link', { name: 'Hoje' })[0],
+    ).not.toHaveAttribute('aria-current')
   })
 
   it('keeps history, stats and settings URLs and exposes accessible names', async () => {
@@ -100,10 +93,9 @@ describe('brand and routes', () => {
     expect(
       (await screen.findAllByRole('link', { name: 'Histórico' }))[0],
     ).toHaveAttribute('href', '/history')
-    expect(screen.getAllByRole('link', { name: 'Estatísticas' })[0]).toHaveAttribute(
-      'href',
-      '/stats',
-    )
+    expect(
+      screen.getAllByRole('link', { name: 'Estatísticas' })[0],
+    ).toHaveAttribute('href', '/stats')
     expect(
       screen.getAllByRole('link', { name: 'Configurações' })[0],
     ).toHaveAttribute('href', '/settings')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   canTaskEnterPlan,
   getDailyPlanByDate,
@@ -40,12 +40,17 @@ export function PlanDayDialog({ open, dateKey, onClose }: PlanDayDialogProps) {
     removeDailyPlanSecondary,
   } = usePomodoro()
   const currentPlan = getDailyPlanByDate(dailyPlans, dateKey)
-  const [draft, setDraft] = useState<PlanDraft>(() => draftFromPlan(currentPlan))
+  const [draft, setDraft] = useState<PlanDraft>(() =>
+    draftFromPlan(currentPlan),
+  )
+  const wasOpenRef = useRef(false)
 
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
       setDraft(draftFromPlan(getDailyPlanByDate(dailyPlans, dateKey)))
     }
+
+    wasOpenRef.current = open
   }, [dailyPlans, dateKey, open])
 
   const essentialTask = tasks.find((task) => task.id === draft.essentialTaskId)

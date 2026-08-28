@@ -1,11 +1,22 @@
 import type { ReactNode } from 'react'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PomodoroProvider, usePomodoro } from '../../contexts/PomodoroContext'
 import { Home } from '../home/Home'
 import { persistPomodoroState, STORAGE_KEY_DESTRAVAI } from '../../lib/storage'
-import { makeCycle, makeDailyPlan, makeState, makeTask } from '../../test/factories'
+import {
+  makeCycle,
+  makeDailyPlan,
+  makeState,
+  makeTask,
+} from '../../test/factories'
 import { TodayPage } from './TodayPage'
 
 const navigation = vi.hoisted(() => ({
@@ -19,14 +30,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('next/link', () => ({
-  default({
-    href,
-    children,
-    ...props
-  }: {
-    href: string
-    children: ReactNode
-  }) {
+  default({ href, children, ...props }: { href: string; children: ReactNode }) {
     return (
       <a href={href} {...props}>
         {children}
@@ -52,24 +56,28 @@ function ForceThirdSecondary({
   const { addDailyPlanSecondary } = usePomodoro()
 
   return (
-    <button type="button" onClick={() => addDailyPlanSecondary(dateKey, taskId)}>
+    <button
+      type="button"
+      onClick={() => addDailyPlanSecondary(dateKey, taskId)}
+    >
       force-third
     </button>
   )
 }
 
-function renderToday(extra?: ReactNode) {
+function renderToday() {
   return render(
     <PomodoroProvider>
       <TodayPage />
-      {extra}
     </PomodoroProvider>,
   )
 }
 
 async function readyToday() {
   renderToday()
-  expect(await screen.findByRole('heading', { name: 'Hoje' })).toBeInTheDocument()
+  expect(
+    await screen.findByRole('heading', { name: 'Hoje' }),
+  ).toBeInTheDocument()
 }
 
 describe('Today screen', () => {
@@ -108,7 +116,9 @@ describe('Today screen', () => {
 
       expect(input).toHaveValue('')
       expect(input).toHaveFocus()
-      expect(screen.getByText('Capturado: Ligar para a clínica')).toBeInTheDocument()
+      expect(
+        screen.getByText('Capturado: Ligar para a clínica'),
+      ).toBeInTheDocument()
       expect(
         screen.getAllByText('Ligar para a clínica').length,
       ).toBeGreaterThan(0)
@@ -216,11 +226,17 @@ describe('Today screen', () => {
           <ForceThirdSecondary dateKey={DATE_KEY} taskId="s3" />
         </PomodoroProvider>,
       )
-      expect(await screen.findByRole('heading', { name: 'Hoje' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Hoje' }),
+      ).toBeInTheDocument()
 
       expect(screen.getByRole('heading', { name: 'Essencial' })).toBeTruthy()
-      expect(screen.getByRole('heading', { name: 'Secundária um' })).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'Secundária dois' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'Secundária um' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'Secundária dois' }),
+      ).toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'Adicionar como secundária' }),
       ).toBeNull()
@@ -228,7 +244,10 @@ describe('Today screen', () => {
 
       await user.click(screen.getByRole('button', { name: 'force-third' }))
       await waitFor(() => {
-        expect(storedState().dailyPlans[0].secondaryTaskIds).toEqual(['s1', 's2'])
+        expect(storedState().dailyPlans[0].secondaryTaskIds).toEqual([
+          's1',
+          's2',
+        ])
       })
     })
 
@@ -258,7 +277,9 @@ describe('Today screen', () => {
 
       await user.click(screen.getByRole('button', { name: 'Planejar meu dia' }))
       const dialog = screen.getByRole('dialog', { name: 'Planejar meu dia' })
-      expect(within(dialog).getByRole('radio', { name: 'Aberta' })).toBeInTheDocument()
+      expect(
+        within(dialog).getByRole('radio', { name: 'Aberta' }),
+      ).toBeInTheDocument()
       expect(within(dialog).queryByText('Já concluída')).toBeNull()
       expect(within(dialog).queryByText('Já arquivada')).toBeNull()
     })
@@ -266,7 +287,9 @@ describe('Today screen', () => {
     it('removes a task from the plan without deleting it', async () => {
       persistPomodoroState(
         makeState({
-          tasks: [makeTask({ id: 'keep', title: 'Continua ativa', status: 'active' })],
+          tasks: [
+            makeTask({ id: 'keep', title: 'Continua ativa', status: 'active' }),
+          ],
           dailyPlans: [
             makeDailyPlan({ date: DATE_KEY, essentialTaskId: 'keep' }),
           ],
@@ -278,9 +301,13 @@ describe('Today screen', () => {
       await user.click(
         screen.getByRole('button', { name: 'Mais ações para Continua ativa' }),
       )
-      await user.click(screen.getByRole('menuitem', { name: 'Remover do plano' }))
+      await user.click(
+        screen.getByRole('menuitem', { name: 'Remover do plano' }),
+      )
 
-      expect(await screen.findByText('Seu dia ainda está aberto.')).toBeInTheDocument()
+      expect(
+        await screen.findByText('Seu dia ainda está aberto.'),
+      ).toBeInTheDocument()
       await waitFor(() => {
         const state = storedState()
         expect(state.tasks[0].id).toBe('keep')
@@ -294,7 +321,13 @@ describe('Today screen', () => {
     it('keeps a completed essential in place, without remove or archive', async () => {
       persistPomodoroState(
         makeState({
-          tasks: [makeTask({ id: 'focus-me', title: 'Revisar o texto', status: 'active' })],
+          tasks: [
+            makeTask({
+              id: 'focus-me',
+              title: 'Revisar o texto',
+              status: 'active',
+            }),
+          ],
           dailyPlans: [
             makeDailyPlan({ date: DATE_KEY, essentialTaskId: 'focus-me' }),
           ],
@@ -306,16 +339,22 @@ describe('Today screen', () => {
       await user.click(screen.getByRole('button', { name: 'Concluir' }))
 
       expect(await screen.findByText('Concluída')).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'Revisar o texto' })).toBeInTheDocument()
       expect(
-        screen.getByText('Concluída: Revisar o texto. Ela permanece no seu plano de hoje.'),
+        screen.getByRole('heading', { name: 'Revisar o texto' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'Concluída: Revisar o texto. Ela permanece no seu plano de hoje.',
+        ),
       ).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Concluir' })).toBeNull()
 
       await user.click(
         screen.getByRole('button', { name: 'Mais ações para Revisar o texto' }),
       )
-      expect(screen.queryByRole('menuitem', { name: 'Remover do plano' })).toBeNull()
+      expect(
+        screen.queryByRole('menuitem', { name: 'Remover do plano' }),
+      ).toBeNull()
       expect(screen.queryByRole('menuitem', { name: 'Arquivar' })).toBeNull()
 
       await waitFor(() => {
@@ -345,7 +384,9 @@ describe('Today screen', () => {
       expect(await screen.findByText('Concluída')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Reabrir' }))
-      expect(await screen.findByRole('button', { name: 'Iniciar foco' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('button', { name: 'Iniciar foco' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('Essencial')).toBeInTheDocument()
 
       await waitFor(() => {
@@ -354,9 +395,13 @@ describe('Today screen', () => {
 
       unmount()
       renderToday()
-      expect(await screen.findByRole('heading', { name: 'Revisar o texto' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Revisar o texto' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('Essencial')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Iniciar foco' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Iniciar foco' }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -364,7 +409,9 @@ describe('Today screen', () => {
     it('saves title, next action, energy and estimate', async () => {
       persistPomodoroState(
         makeState({
-          tasks: [makeTask({ id: 'edit-me', title: 'Rascunho', status: 'active' })],
+          tasks: [
+            makeTask({ id: 'edit-me', title: 'Rascunho', status: 'active' }),
+          ],
           dailyPlans: [
             makeDailyPlan({ date: DATE_KEY, essentialTaskId: 'edit-me' }),
           ],
@@ -373,7 +420,9 @@ describe('Today screen', () => {
       const user = userEvent.setup()
       await readyToday()
 
-      await user.click(screen.getByRole('button', { name: 'Mais ações para Rascunho' }))
+      await user.click(
+        screen.getByRole('button', { name: 'Mais ações para Rascunho' }),
+      )
       await user.click(screen.getByRole('menuitem', { name: 'Editar' }))
 
       const dialog = screen.getByRole('dialog', { name: 'Editar tarefa' })
@@ -381,7 +430,9 @@ describe('Today screen', () => {
       await user.clear(title)
       await user.type(title, 'Capítulo 1')
       await user.type(
-        within(dialog).getByLabelText('Qual é o menor passo concreto para começar?'),
+        within(dialog).getByLabelText(
+          'Qual é o menor passo concreto para começar?',
+        ),
         'Abrir o documento e escrever o primeiro parágrafo.',
       )
       await user.click(within(dialog).getByLabelText('Exige energia'))
@@ -392,7 +443,9 @@ describe('Today screen', () => {
       )
       await user.click(within(dialog).getByRole('button', { name: 'Salvar' }))
 
-      expect(await screen.findByRole('heading', { name: 'Capítulo 1' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Capítulo 1' }),
+      ).toBeInTheDocument()
       expect(
         screen.getByText('Abrir o documento e escrever o primeiro parágrafo.'),
       ).toBeInTheDocument()
@@ -403,7 +456,9 @@ describe('Today screen', () => {
     it('does not save on cancel and rejects an empty title', async () => {
       persistPomodoroState(
         makeState({
-          tasks: [makeTask({ id: 'edit-me', title: 'Rascunho', status: 'inbox' })],
+          tasks: [
+            makeTask({ id: 'edit-me', title: 'Rascunho', status: 'inbox' }),
+          ],
         }),
       )
       const user = userEvent.setup()
@@ -432,7 +487,13 @@ describe('Today screen', () => {
     it('starts a focus cycle in one event, snapshots the title and navigates', async () => {
       persistPomodoroState(
         makeState({
-          tasks: [makeTask({ id: 'task-focus', title: 'Estudar testes', status: 'active' })],
+          tasks: [
+            makeTask({
+              id: 'task-focus',
+              title: 'Estudar testes',
+              status: 'active',
+            }),
+          ],
           dailyPlans: [
             makeDailyPlan({ date: DATE_KEY, essentialTaskId: 'task-focus' }),
           ],
@@ -458,7 +519,11 @@ describe('Today screen', () => {
         makeState({
           selectedTaskId: 'task-focus',
           tasks: [
-            makeTask({ id: 'task-focus', title: 'Estudar testes', status: 'active' }),
+            makeTask({
+              id: 'task-focus',
+              title: 'Estudar testes',
+              status: 'active',
+            }),
             makeTask({
               id: 'other',
               title: 'Outra',
@@ -487,11 +552,12 @@ describe('Today screen', () => {
       const user = userEvent.setup()
       await readyToday()
 
-      expect(screen.getByRole('link', { name: 'Voltar ao foco' })).toHaveAttribute(
-        'href',
-        '/focus',
+      expect(
+        screen.getByRole('link', { name: 'Voltar ao foco' }),
+      ).toHaveAttribute('href', '/focus')
+      await user.click(
+        screen.getAllByRole('button', { name: 'Voltar ao foco' })[0],
       )
-      await user.click(screen.getAllByRole('button', { name: 'Voltar ao foco' })[0])
       expect(navigation.push).toHaveBeenCalledWith('/focus')
       await waitFor(() => {
         expect(storedState().cycles).toHaveLength(1)
@@ -502,7 +568,13 @@ describe('Today screen', () => {
     it('does not reset the running timer when the Today view unmounts', async () => {
       persistPomodoroState(
         makeState({
-          tasks: [makeTask({ id: 'task-focus', title: 'Estudar testes', status: 'active' })],
+          tasks: [
+            makeTask({
+              id: 'task-focus',
+              title: 'Estudar testes',
+              status: 'active',
+            }),
+          ],
           dailyPlans: [
             makeDailyPlan({ date: DATE_KEY, essentialTaskId: 'task-focus' }),
           ],
@@ -519,11 +591,15 @@ describe('Today screen', () => {
 
       const user = userEvent.setup()
       const { rerender } = render(<Shell view="today" />)
-      expect(await screen.findByRole('heading', { name: 'Hoje' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Hoje' }),
+      ).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Iniciar foco' }))
 
       rerender(<Shell view="focus" />)
-      expect(await screen.findByRole('button', { name: /pausar/i })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('button', { name: /pausar/i }),
+      ).toBeInTheDocument()
       expect(screen.getAllByText('Estudar testes').length).toBeGreaterThan(0)
     })
   })
@@ -536,34 +612,50 @@ describe('Today screen', () => {
             makeTask({ id: 'i1', title: 'Um', status: 'inbox', position: 0 }),
             makeTask({ id: 'i2', title: 'Dois', status: 'inbox', position: 1 }),
             makeTask({ id: 'i3', title: 'Três', status: 'inbox', position: 2 }),
-            makeTask({ id: 'i4', title: 'Quatro', status: 'inbox', position: 3 }),
+            makeTask({
+              id: 'i4',
+              title: 'Quatro',
+              status: 'inbox',
+              position: 3,
+            }),
           ],
         }),
       )
       const user = userEvent.setup()
       await readyToday()
 
-      expect(screen.getByText('4 itens para organizar quando fizer sentido.')).toBeInTheDocument()
+      expect(
+        screen.getByText('4 itens para organizar quando fizer sentido.'),
+      ).toBeInTheDocument()
       expect(screen.getByText('Um')).toBeInTheDocument()
       expect(screen.queryByText('Quatro')).toBeNull()
 
       await user.click(screen.getByRole('button', { name: 'Ver todas (4)' }))
       expect(screen.getByText('Quatro')).toBeInTheDocument()
 
-      await user.click(screen.getAllByRole('button', { name: 'Mover para ativas' })[0])
+      await user.click(
+        screen.getAllByRole('button', { name: 'Mover para ativas' })[0],
+      )
       await waitFor(() => {
-        expect(storedState().tasks.find((task: { id: string }) => task.id === 'i1').status).toBe(
-          'active',
-        )
+        expect(
+          storedState().tasks.find((task: { id: string }) => task.id === 'i1')
+            .status,
+        ).toBe('active')
       })
 
       await user.click(screen.getAllByRole('button', { name: 'Arquivar' })[0])
-      const archiveDialog = screen.getByRole('dialog', { name: 'Arquivar tarefa?' })
+      const archiveDialog = screen.getByRole('dialog', {
+        name: 'Arquivar tarefa?',
+      })
       expect(archiveDialog).toBeInTheDocument()
-      await user.click(within(archiveDialog).getByRole('button', { name: 'Arquivar' }))
+      await user.click(
+        within(archiveDialog).getByRole('button', { name: 'Arquivar' }),
+      )
       await waitFor(() => {
         expect(
-          storedState().tasks.some((task: { status: string }) => task.status === 'archived'),
+          storedState().tasks.some(
+            (task: { status: string }) => task.status === 'archived',
+          ),
         ).toBe(true)
       })
     })
@@ -571,7 +663,9 @@ describe('Today screen', () => {
     it('moves a planned inbox item out of the inbox', async () => {
       persistPomodoroState(
         makeState({
-          tasks: [makeTask({ id: 'inbox-1', title: 'Entrada', status: 'inbox' })],
+          tasks: [
+            makeTask({ id: 'inbox-1', title: 'Entrada', status: 'inbox' }),
+          ],
         }),
       )
       const user = userEvent.setup()
@@ -579,7 +673,9 @@ describe('Today screen', () => {
 
       await user.click(screen.getByRole('button', { name: 'Tornar essencial' }))
       expect(await screen.findByText('Essencial')).toBeInTheDocument()
-      expect(screen.getByText('Nada por aqui. Capture o que estiver na cabeça.')).toBeInTheDocument()
+      expect(
+        screen.getByText('Nada por aqui. Capture o que estiver na cabeça.'),
+      ).toBeInTheDocument()
       await waitFor(() => {
         expect(storedState().tasks[0].status).toBe('active')
         expect(storedState().dailyPlans[0].essentialTaskId).toBe('inbox-1')

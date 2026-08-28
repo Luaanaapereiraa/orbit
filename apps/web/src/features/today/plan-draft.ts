@@ -40,10 +40,9 @@ export function diffPlanDraft(
   const ops: PlanOp[] = []
   const currentEssential = current?.essentialTaskId ?? null
   const currentSecondaries = current?.secondaryTaskIds ?? []
-  const draftIds = [
-    draft.essentialTaskId,
-    ...draft.secondaryTaskIds,
-  ].filter((id): id is string => !!id)
+  const draftIds = [draft.essentialTaskId, ...draft.secondaryTaskIds].filter(
+    (id): id is string => !!id,
+  )
 
   for (const taskId of draftIds) {
     const task = tasks.find((item) => item.id === taskId)

@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  type ReactNode,
-  type RefObject,
-  useId,
-  useLayoutEffect,
-  useRef,
-} from 'react'
+import { type ReactNode, type RefObject, useEffect, useId, useRef } from 'react'
 import { cn } from '../../lib/cn'
 
 interface DialogProps {
@@ -29,7 +23,7 @@ export function Dialog({
   const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const node = dialogRef.current
 
     if (!open || !node) {
@@ -97,7 +91,9 @@ export function Dialog({
           ×
         </button>
       </div>
-      <div className="px-5 py-4">{children}</div>
+      <div className="max-h-[min(70vh,36rem)] overflow-y-auto px-5 py-4">
+        {children}
+      </div>
     </dialog>
   )
 }

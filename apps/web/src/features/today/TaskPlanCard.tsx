@@ -92,7 +92,9 @@ export function TaskPlanCard({
 
       {task.nextAction && (
         <p className="text-sm text-ink dark:text-ink-dark">
-          <span className="text-muted dark:text-muted-dark">Próximo passo: </span>
+          <span className="text-muted dark:text-muted-dark">
+            Próximo passo:{' '}
+          </span>
           {task.nextAction}
         </p>
       )}
@@ -121,10 +123,7 @@ export function TaskPlanCard({
           </Button>
         ) : (
           <>
-            <Button
-              className="h-11"
-              onClick={() => startFocusForTask(task.id)}
-            >
+            <Button className="h-11" onClick={() => startFocusForTask(task.id)}>
               <Play size={16} weight="fill" aria-hidden />
               {alreadyFocusing ? 'Voltar ao foco' : 'Iniciar foco'}
             </Button>
@@ -210,14 +209,10 @@ export function TaskPlanCard({
   )
 }
 
-export function EssentialTaskCard(
-  props: Omit<TaskPlanCardProps, 'variant'>,
-) {
+export function EssentialTaskCard(props: Omit<TaskPlanCardProps, 'variant'>) {
   return <TaskPlanCard {...props} variant="essential" />
 }
 
-export function SecondaryTaskCard(
-  props: Omit<TaskPlanCardProps, 'variant'>,
-) {
+export function SecondaryTaskCard(props: Omit<TaskPlanCardProps, 'variant'>) {
   return <TaskPlanCard {...props} variant="secondary" />
 }

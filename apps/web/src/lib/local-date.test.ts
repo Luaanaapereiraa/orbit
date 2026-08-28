@@ -18,7 +18,10 @@ describe('toLocalDateKey', () => {
     const date = new Date()
     expect(toLocalDateKey(date)).toBe('2026-01-15')
     expect(toLocalDateKey(date)).toBe(
-      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+        2,
+        '0',
+      )}-${String(date.getDate()).padStart(2, '0')}`,
     )
   })
 })

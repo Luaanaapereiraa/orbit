@@ -2,7 +2,10 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback } from 'react'
-import { usePomodoro, type StartFocusResult } from '../../contexts/PomodoroContext'
+import {
+  usePomodoro,
+  type StartFocusResult,
+} from '../../contexts/PomodoroContext'
 
 export function useStartFocusForTask() {
   const { startFocusForTask } = usePomodoro()

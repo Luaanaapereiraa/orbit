@@ -115,7 +115,9 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
     const estimatedMinutes = resolvedEstimate()
 
     if (estimatedMinutes === undefined) {
-      setError('A estimativa precisa ser um número inteiro positivo, em minutos.')
+      setError(
+        'A estimativa precisa ser um número inteiro positivo, em minutos.',
+      )
       return
     }
 
@@ -264,7 +266,11 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
           </fieldset>
 
           {error && (
-            <p id="task-editor-error" className="text-sm text-danger" role="alert">
+            <p
+              id="task-editor-error"
+              className="text-sm text-danger"
+              role="alert"
+            >
               {error}
             </p>
           )}

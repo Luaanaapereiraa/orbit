@@ -65,7 +65,9 @@ export function InboxPreview({ dateKey, onEdit }: InboxPreviewProps) {
         <p className="mt-1 text-sm text-muted dark:text-muted-dark">
           {inbox.length === 0
             ? 'Nada por aqui. Capture o que estiver na cabeça.'
-            : `${inbox.length} ${inbox.length === 1 ? 'item' : 'itens'} para organizar quando fizer sentido.`}
+            : `${inbox.length} ${
+                inbox.length === 1 ? 'item' : 'itens'
+              } para organizar quando fizer sentido.`}
         </p>
       </div>
 
@@ -138,9 +140,7 @@ export function InboxPreview({ dateKey, onEdit }: InboxPreviewProps) {
           className="h-11 w-full"
           onClick={() => setExpanded((value) => !value)}
         >
-          {expanded
-            ? 'Mostrar menos'
-            : `Ver todas (${inbox.length})`}
+          {expanded ? 'Mostrar menos' : `Ver todas (${inbox.length})`}
         </Button>
       )}
 
