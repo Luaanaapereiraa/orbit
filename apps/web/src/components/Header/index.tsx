@@ -14,12 +14,13 @@ const links = [
   { to: '/settings', title: 'Configurações', icon: Gear, end: false },
 ]
 
-function isActivePath(pathname: string, href: string, end: boolean) {
+function isActivePath(pathname: string | null, href: string, end: boolean) {
+  const current = pathname ?? ''
   if (end) {
-    return pathname === href
+    return current === href
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`)
+  return current === href || current.startsWith(`${href}/`)
 }
 
 export function Header() {

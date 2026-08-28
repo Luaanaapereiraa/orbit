@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { Inter, JetBrains_Mono as JetBrainsMono } from 'next/font/google'
+import type { ReactNode } from 'react'
 import { PomodoroProvider } from '../contexts/PomodoroContext'
 import { PwaRegister } from '../components/PwaRegister'
 import { APP_DESCRIPTION, APP_NAME } from '../lib/brand'
@@ -12,7 +13,7 @@ const inter = Inter({
   variable: '--font-sans',
 })
 
-const jetbrains = JetBrains_Mono({
+const jetbrains = JetBrainsMono({
   subsets: ['latin'],
   weight: ['700'],
   variable: '--font-mono',
@@ -37,11 +38,7 @@ export const viewport: Viewport = {
   themeColor: '#0b1220',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="pt-BR"

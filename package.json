@@ -17,11 +17,13 @@
     "@typescript-eslint/eslint-plugin": "^5.60.1",
     "@typescript-eslint/parser": "^5.60.1",
     "eslint": "^8.43.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "typescript": "^5.0.2",
     "vitest": "^4.1.11"
   },
   "overrides": {
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react": "$react",
+    "react-dom": "$react-dom"
   }
 }
