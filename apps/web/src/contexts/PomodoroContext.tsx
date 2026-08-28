@@ -8,12 +8,16 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
 } from 'react'
 import {
+  addDailyPlanSecondaryAction,
   addNewCycleAction,
   addTaskAction,
+  archiveTaskAction,
   clearHistoryAction,
+  completeTaskAction,
   deleteTaskAction,
   finishCycleAction,
   formatClock,
@@ -21,14 +25,25 @@ import {
   getNextBreakType,
   hydratePomodoroStateAction,
   interruptCurrentCycleAction,
+  moveTaskToActiveAction,
   pauseCurrentCycleAction,
   pomodoroReducer,
+  removeDailyPlanSecondaryAction,
+  reopenTaskAction,
   resumeCurrentCycleAction,
   selectTaskAction,
+  setDailyPlanEssentialAction,
   updateSettingsAction,
+  updateTaskEnergyAction,
+  updateTaskEstimatedMinutesAction,
+  updateTaskNextActionAction,
+  updateTaskTitleAction,
   type Cycle,
+  type DailyPlan,
+  type PomodoroState,
   type Settings,
   type Task,
+  type TaskEnergy,
   initialPomodoroState,
 } from '@destravai/core'
 import {
@@ -37,6 +52,7 @@ import {
   persistPomodoroState,
 } from '../lib/storage'
 import { APP_NAME } from '../lib/brand'
+import { toLocalDateKey } from '../lib/local-date'
 import {
   notifyCycleFinished,
   playFinishSound,
@@ -44,23 +60,51 @@ import {
   unlockAudio,
 } from '../utils/cycleAlerts'
 
+export type StartFocusResult = 'started' | 'already-active' | 'rejected'
+
+function nowIso() {
+  return new Date().toISOString()
+}
+
+function currentDateKey() {
+  return toLocalDateKey(new Date())
+}
+
 interface PomodoroContextType {
+  hydrated: boolean
   cycles: Cycle[]
   activeCycle: Cycle | undefined
   activeCycleId: string | null
   amountSecondsPassed: number
   tasks: Task[]
   selectedTaskId: string | null
+  dailyPlans: DailyPlan[]
   settings: Settings
   startFocus: () => void
+  startFocusForTask: (taskId: string) => StartFocusResult
   pauseCurrentCycle: () => void
   resumeCurrentCycle: () => void
   interruptCurrentCycle: () => void
   skipCurrentCycle: () => void
   clearHistory: () => void
   addTask: (name: string) => void
+  captureInboxTask: (title: string) => boolean
   selectTask: (taskId: string) => void
   deleteTask: (taskId: string) => void
+  completeTask: (taskId: string) => void
+  reopenTask: (taskId: string, destination?: 'active' | 'inbox') => void
+  archiveTask: (taskId: string) => void
+  updateTaskTitle: (taskId: string, title: string) => void
+  updateTaskNextAction: (taskId: string, nextAction: string | null) => void
+  updateTaskEnergy: (taskId: string, energy: TaskEnergy | null) => void
+  updateTaskEstimatedMinutes: (
+    taskId: string,
+    estimatedMinutes: number | null,
+  ) => void
+  moveTaskToActive: (taskId: string) => void
+  setDailyPlanEssential: (dateKey: string, taskId: string | null) => void
+  addDailyPlanSecondary: (dateKey: string, taskId: string) => void
+  removeDailyPlanSecondary: (dateKey: string, taskId: string) => void
   updateSettings: (settings: Partial<Settings>) => void
 }
 
@@ -73,8 +117,11 @@ interface PomodoroProviderProps {
 export function PomodoroProvider({ children }: PomodoroProviderProps) {
   const [state, dispatch] = useReducer(pomodoroReducer, initialPomodoroState)
   const [hydrated, setHydrated] = useState(false)
+  const stateRef = useRef<PomodoroState>(state)
+  stateRef.current = state
 
-  const { cycles, activeCycleId, selectedTaskId, tasks, settings } = state
+  const { cycles, activeCycleId, selectedTaskId, tasks, dailyPlans, settings } =
+    state
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
   const selectedTask = tasks.find((task) => task.id === selectedTaskId)
 
@@ -219,6 +266,44 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
     }
   }, [selectedTask, settings.focusMinutes, settings.notificationsEnabled])
 
+  const startFocusForTask = useCallback((taskId: string): StartFocusResult => {
+    const current = stateRef.current
+    const task = current.tasks.find((item) => item.id === taskId)
+
+    if (!task || task.status === 'done' || task.status === 'archived') {
+      return 'rejected'
+    }
+
+    const running = current.cycles.find(
+      (cycle) => cycle.id === current.activeCycleId,
+    )
+
+    if (running) {
+      return 'already-active'
+    }
+
+    dispatch(selectTaskAction(task.id))
+    dispatch(
+      addNewCycleAction({
+        id: crypto.randomUUID(),
+        type: 'focus',
+        task: task.title,
+        taskId: task.id,
+        minutesAmount: current.settings.focusMinutes,
+        startDate: new Date(),
+        pausedMs: 0,
+      }),
+    )
+    setAmountSecondsPassed(0)
+    unlockAudio()
+
+    if (current.settings.notificationsEnabled) {
+      requestNotificationPermission()
+    }
+
+    return 'started'
+  }, [])
+
   const pauseCurrentCycle = useCallback(() => {
     dispatch(pauseCurrentCycleAction())
   }, [])
@@ -252,10 +337,29 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
       addTaskAction({
         id: crypto.randomUUID(),
         title: trimmed,
-        now: new Date().toISOString(),
+        now: nowIso(),
         status: 'active',
       }),
     )
+  }, [])
+
+  const captureInboxTask = useCallback((title: string) => {
+    const trimmed = title.trim()
+
+    if (!trimmed) {
+      return false
+    }
+
+    dispatch(
+      addTaskAction({
+        id: crypto.randomUUID(),
+        title: trimmed,
+        now: nowIso(),
+        status: 'inbox',
+      }),
+    )
+
+    return true
   }, [])
 
   const selectTask = useCallback((taskId: string) => {
@@ -263,8 +367,81 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
   }, [])
 
   const deleteTask = useCallback((taskId: string) => {
-    dispatch(deleteTaskAction(taskId, new Date().toISOString()))
+    dispatch(deleteTaskAction(taskId, nowIso()))
   }, [])
+
+  const completeTask = useCallback((taskId: string) => {
+    dispatch(completeTaskAction(taskId, nowIso()))
+  }, [])
+
+  const reopenTask = useCallback(
+    (taskId: string, destination: 'active' | 'inbox' = 'active') => {
+      dispatch(reopenTaskAction(taskId, nowIso(), destination))
+    },
+    [],
+  )
+
+  const archiveTask = useCallback((taskId: string) => {
+    const dateKey = currentDateKey()
+
+    if (!dateKey) {
+      return
+    }
+
+    dispatch(archiveTaskAction(taskId, nowIso(), dateKey))
+  }, [])
+
+  const updateTaskTitle = useCallback((taskId: string, title: string) => {
+    dispatch(updateTaskTitleAction(taskId, title, nowIso()))
+  }, [])
+
+  const updateTaskNextAction = useCallback(
+    (taskId: string, nextAction: string | null) => {
+      dispatch(updateTaskNextActionAction(taskId, nextAction, nowIso()))
+    },
+    [],
+  )
+
+  const updateTaskEnergy = useCallback(
+    (taskId: string, energy: TaskEnergy | null) => {
+      dispatch(updateTaskEnergyAction(taskId, energy, nowIso()))
+    },
+    [],
+  )
+
+  const updateTaskEstimatedMinutes = useCallback(
+    (taskId: string, estimatedMinutes: number | null) => {
+      dispatch(
+        updateTaskEstimatedMinutesAction(taskId, estimatedMinutes, nowIso()),
+      )
+    },
+    [],
+  )
+
+  const moveTaskToActive = useCallback((taskId: string) => {
+    dispatch(moveTaskToActiveAction(taskId, nowIso()))
+  }, [])
+
+  const setDailyPlanEssential = useCallback(
+    (dateKey: string, taskId: string | null) => {
+      dispatch(setDailyPlanEssentialAction(dateKey, taskId, nowIso()))
+    },
+    [],
+  )
+
+  const addDailyPlanSecondary = useCallback(
+    (dateKey: string, taskId: string) => {
+      dispatch(addDailyPlanSecondaryAction(dateKey, taskId, nowIso()))
+    },
+    [],
+  )
+
+  const removeDailyPlanSecondary = useCallback(
+    (dateKey: string, taskId: string) => {
+      dispatch(removeDailyPlanSecondaryAction(dateKey, taskId, nowIso()))
+    },
+    [],
+  )
 
   const updateSettings = useCallback((next: Partial<Settings>) => {
     if (next.notificationsEnabled) {
@@ -276,41 +453,71 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
 
   const value = useMemo(
     () => ({
+      hydrated,
       cycles,
       activeCycle,
       activeCycleId,
       amountSecondsPassed,
       tasks,
       selectedTaskId,
+      dailyPlans,
       settings,
       startFocus,
+      startFocusForTask,
       pauseCurrentCycle,
       resumeCurrentCycle,
       interruptCurrentCycle,
       skipCurrentCycle,
       clearHistory,
       addTask,
+      captureInboxTask,
       selectTask,
       deleteTask,
+      completeTask,
+      reopenTask,
+      archiveTask,
+      updateTaskTitle,
+      updateTaskNextAction,
+      updateTaskEnergy,
+      updateTaskEstimatedMinutes,
+      moveTaskToActive,
+      setDailyPlanEssential,
+      addDailyPlanSecondary,
+      removeDailyPlanSecondary,
       updateSettings,
     }),
     [
+      hydrated,
       cycles,
       activeCycle,
       activeCycleId,
       amountSecondsPassed,
       tasks,
       selectedTaskId,
+      dailyPlans,
       settings,
       startFocus,
+      startFocusForTask,
       pauseCurrentCycle,
       resumeCurrentCycle,
       interruptCurrentCycle,
       skipCurrentCycle,
       clearHistory,
       addTask,
+      captureInboxTask,
       selectTask,
       deleteTask,
+      completeTask,
+      reopenTask,
+      archiveTask,
+      updateTaskTitle,
+      updateTaskNextAction,
+      updateTaskEnergy,
+      updateTaskEstimatedMinutes,
+      moveTaskToActive,
+      setDailyPlanEssential,
+      addDailyPlanSecondary,
+      removeDailyPlanSecondary,
       updateSettings,
     ],
   )

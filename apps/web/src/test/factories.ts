@@ -1,5 +1,6 @@
 import {
   type Cycle,
+  type DailyPlan,
   type PomodoroState,
   type Task,
   initialPomodoroState,
@@ -17,6 +18,17 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     createdAt: '2026-01-01T10:00:00.000Z',
     updatedAt: '2026-01-01T10:00:00.000Z',
     completedAt: null,
+    ...overrides,
+  }
+}
+
+export function makeDailyPlan(overrides: Partial<DailyPlan> = {}): DailyPlan {
+  return {
+    date: '2026-01-15',
+    essentialTaskId: null,
+    secondaryTaskIds: [],
+    createdAt: '2026-01-15T12:00:00.000Z',
+    updatedAt: '2026-01-15T12:00:00.000Z',
     ...overrides,
   }
 }
