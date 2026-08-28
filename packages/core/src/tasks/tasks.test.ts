@@ -6,6 +6,7 @@ import {
   completeTaskInList,
   migrateLegacyTasks,
   moveTaskBetweenInboxAndActive,
+  normalizeStoredTask,
   normalizeTitle,
   reopenTaskInList,
   reorderTasksByIds,
@@ -234,5 +235,51 @@ describe('migrateLegacyTasks', () => {
       createdAt: NOW,
       updatedAt: NOW,
     })
+  })
+})
+
+describe('normalizeStoredTask', () => {
+  it('preserves completedAt when hydrating an archived task that was done', () => {
+    const task = normalizeStoredTask(
+      {
+        id: 'task-1',
+        title: 'Arquivada',
+        status: 'archived',
+        completedAt: NOW,
+      },
+      LATER,
+    )
+
+    expect(task?.status).toBe('archived')
+    expect(task?.completedAt).toBe(NOW)
+  })
+
+  it('does not invent completedAt for archived tasks without one', () => {
+    const task = normalizeStoredTask(
+      {
+        id: 'task-1',
+        title: 'Arquivada',
+        status: 'archived',
+        completedAt: 'not-a-date',
+      },
+      LATER,
+    )
+
+    expect(task?.status).toBe('archived')
+    expect(task?.completedAt).toBeNull()
+  })
+
+  it('still fills completedAt for done tasks using the fallback clock', () => {
+    const task = normalizeStoredTask(
+      {
+        id: 'task-1',
+        title: 'Concluída',
+        status: 'done',
+      },
+      LATER,
+    )
+
+    expect(task?.status).toBe('done')
+    expect(task?.completedAt).toBe(LATER)
   })
 })

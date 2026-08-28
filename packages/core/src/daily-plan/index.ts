@@ -7,7 +7,7 @@ export type { DailyPlan }
 export { canTaskEnterPlan, canTaskRemainInPlan } from './eligibility'
 export { formatLocalDateKey, isValidLocalDateKey } from './date-key'
 
-function tasksById(tasks: Task[]) {
+function tasksById(tasks: readonly Task[]) {
   return new Map(tasks.map((task) => [task.id, task]))
 }
 
@@ -41,7 +41,7 @@ function previousPlanIds(plan: DailyPlan | null) {
   return ids
 }
 
-export function getDailyPlanByDate(plans: DailyPlan[], date: string) {
+export function getDailyPlanByDate(plans: readonly DailyPlan[], date: string) {
   if (!isValidLocalDateKey(date)) {
     return null
   }
@@ -72,7 +72,10 @@ export function normalizePlanIds(plan: DailyPlan): DailyPlan {
   }
 }
 
-export function sanitizeDailyPlan(plan: DailyPlan, tasks: Task[]): DailyPlan {
+export function sanitizeDailyPlan(
+  plan: DailyPlan,
+  tasks: readonly Task[],
+): DailyPlan {
   const byId = tasksById(tasks)
   const essentialTask = plan.essentialTaskId
     ? byId.get(plan.essentialTaskId)
@@ -107,7 +110,7 @@ export function sanitizeDailyPlan(plan: DailyPlan, tasks: Task[]): DailyPlan {
   }
 }
 
-export function resolvePlanTasks(plan: DailyPlan, tasks: Task[]) {
+export function resolvePlanTasks(plan: DailyPlan, tasks: readonly Task[]) {
   const byId = tasksById(tasks)
   const essential = plan.essentialTaskId
     ? byId.get(plan.essentialTaskId) ?? null
@@ -190,7 +193,7 @@ export function removeTaskFromCurrentAndFuturePlans(
 
 export function clearInvalidPlanReferences(
   plans: DailyPlan[],
-  tasks: Task[],
+  tasks: readonly Task[],
   now: string,
 ) {
   let changed = false
@@ -223,9 +226,9 @@ export function upsertDailyPlan(
     date: string
     now: string
     essentialTaskId?: string | null
-    secondaryTaskIds?: string[]
+    secondaryTaskIds?: readonly string[]
   },
-  tasks: Task[],
+  tasks: readonly Task[],
 ): DailyPlan[] {
   if (!isValidLocalDateKey(input.date)) {
     return plans
@@ -298,7 +301,7 @@ export function setDailyPlanEssential(
   date: string,
   taskId: string | null,
   now: string,
-  tasks: Task[],
+  tasks: readonly Task[],
 ) {
   if (taskId !== null) {
     const task = tasks.find((item) => item.id === taskId)
@@ -335,7 +338,7 @@ export function addDailyPlanSecondary(
   date: string,
   taskId: string,
   now: string,
-  tasks: Task[],
+  tasks: readonly Task[],
 ) {
   const task = tasks.find((item) => item.id === taskId)
 
@@ -373,7 +376,7 @@ export function removeDailyPlanSecondary(
   date: string,
   taskId: string,
   now: string,
-  tasks: Task[],
+  tasks: readonly Task[],
 ) {
   const existing = getDailyPlanByDate(plans, date)
 

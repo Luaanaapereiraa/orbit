@@ -355,6 +355,26 @@ describe('storage', () => {
     expect(loaded.dailyPlans[0].essentialTaskId).toBe('task-1')
   })
 
+  it('preserves completedAt after persisting an archived task that was done', () => {
+    persistPomodoroState(
+      makeState({
+        tasks: [
+          makeTask({
+            id: 'task-1',
+            title: 'Arquivada',
+            status: 'archived',
+            completedAt: NOW,
+          }),
+        ],
+      }),
+    )
+
+    const loaded = loadPomodoroState(localStorage, NOW)
+
+    expect(loaded.tasks[0].status).toBe('archived')
+    expect(loaded.tasks[0].completedAt).toBe(NOW)
+  })
+
   it('does not mix a valid empty DestravAI envelope with legacy v2 data', () => {
     localStorage.setItem(
       STORAGE_KEY_DESTRAVAI,

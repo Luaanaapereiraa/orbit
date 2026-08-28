@@ -416,7 +416,11 @@ export function normalizeStoredTask(
   const completedAt =
     status === 'done'
       ? toIsoTimestamp(value.completedAt, fallbackNow)
-      : null
+      : status === 'archived' &&
+          typeof value.completedAt === 'string' &&
+          isIsoTimestamp(value.completedAt)
+        ? value.completedAt
+        : null
 
   return {
     id: value.id,
