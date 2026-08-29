@@ -58,7 +58,10 @@ export function clampAvailableMinutes(value: number) {
   if (!Number.isFinite(value)) {
     return 25
   }
-  return Math.min(MAX_AVAILABLE_MINUTES, Math.max(MIN_AVAILABLE_MINUTES, Math.round(value)))
+  return Math.min(
+    MAX_AVAILABLE_MINUTES,
+    Math.max(MIN_AVAILABLE_MINUTES, Math.round(value)),
+  )
 }
 
 export function buildUnlockTaskRequest(input: {

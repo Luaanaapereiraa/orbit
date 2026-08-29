@@ -14,7 +14,10 @@ function walk(dir: string, files: string[] = []) {
     const path = resolve(dir, entry.name)
     if (entry.isDirectory()) {
       walk(path, files)
-    } else if (/\.(ts|tsx|js|mjs|example)$/.test(entry.name)) {
+    } else if (
+      /\.(ts|tsx|js|mjs|example)$/.test(entry.name) &&
+      !/\.test\.(ts|tsx)$/.test(entry.name)
+    ) {
       files.push(path)
     }
   }

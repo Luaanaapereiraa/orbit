@@ -96,7 +96,10 @@ export function SignInForm({
         >
           {mode === 'signin' ? 'Criar conta' : 'Já tenho conta'}
         </Button>
-        <Button type="submit" disabled={busy || !email.trim() || password.length < 6}>
+        <Button
+          type="submit"
+          disabled={busy || !email.trim() || password.length < 6}
+        >
           {mode === 'signin' ? 'Entrar' : 'Criar conta e entrar'}
         </Button>
       </div>

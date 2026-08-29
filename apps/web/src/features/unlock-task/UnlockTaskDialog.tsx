@@ -1,7 +1,11 @@
 'use client'
 
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import type { BlockageReason, UnlockPlan, UnlockTaskRunResponse } from '@destravai/contracts'
+import type {
+  BlockageReason,
+  UnlockPlan,
+  UnlockTaskRunResponse,
+} from '@destravai/contracts'
 import {
   BLOCKAGE_DETAILS_MAX_LENGTH,
   MAX_AVAILABLE_MINUTES,
@@ -71,7 +75,9 @@ export function UnlockTaskDialog({
   const liveTask = tasks.find((item) => item.id === task?.id) ?? task
 
   const [step, setStep] = useState<Step>('form')
-  const [reason, setReason] = useState<BlockageReason>('dont_know_where_to_start')
+  const [reason, setReason] = useState<BlockageReason>(
+    'dont_know_where_to_start',
+  )
   const [details, setDetails] = useState('')
   const [energy, setEnergy] = useState<TaskEnergy | ''>('')
   const [availableMinutes, setAvailableMinutes] = useState(25)
@@ -148,10 +154,13 @@ export function UnlockTaskDialog({
         caught instanceof UnlockTaskApiError
           ? messageForUnlockError(caught)
           : caught instanceof Error
-            ? caught.message
-            : 'Não foi possível pedir ajuda agora.'
+          ? caught.message
+          : 'Não foi possível pedir ajuda agora.'
       setError(message)
-      if (caught instanceof UnlockTaskApiError && caught.code === 'UNAUTHORIZED') {
+      if (
+        caught instanceof UnlockTaskApiError &&
+        caught.code === 'UNAUTHORIZED'
+      ) {
         setStep('auth')
         return
       }
@@ -183,10 +192,10 @@ export function UnlockTaskDialog({
     step === 'completed'
       ? 'Sugestão pronta'
       : step === 'clarification'
-        ? 'Preciso de um detalhe'
-        : step === 'rejected'
-          ? 'Não posso seguir com isso'
-          : 'Estou travada'
+      ? 'Preciso de um detalhe'
+      : step === 'rejected'
+      ? 'Não posso seguir com isso'
+      : 'Estou travada'
 
   return (
     <>
@@ -219,7 +228,9 @@ export function UnlockTaskDialog({
             </p>
 
             <fieldset>
-              <legend className="text-sm font-medium">O que está travando?</legend>
+              <legend className="text-sm font-medium">
+                O que está travando?
+              </legend>
               <div className="mt-2 grid gap-2">
                 {BLOCKAGE_OPTIONS.map((option) => (
                   <label
@@ -334,36 +345,41 @@ export function UnlockTaskDialog({
           />
         )}
 
-        {step === 'clarification' && result?.status === 'needs_clarification' && (
-          <form
-            className="space-y-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              setClientRequestId(crypto.randomUUID())
-              void submit()
-            }}
-          >
-            <p className="text-sm text-ink dark:text-ink-dark">{result.question}</p>
-            <textarea
-              value={details}
-              maxLength={BLOCKAGE_DETAILS_MAX_LENGTH}
-              onChange={(event) => setDetails(event.target.value)}
-              rows={3}
-              required
-              className="w-full rounded-xl border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-brand dark:border-line-dark"
-            />
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={onClose}>
-                Agora não
-              </Button>
-              <Button type="submit">Responder e pedir de novo</Button>
-            </div>
-          </form>
-        )}
+        {step === 'clarification' &&
+          result?.status === 'needs_clarification' && (
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault()
+                setClientRequestId(crypto.randomUUID())
+                submit()
+              }}
+            >
+              <p className="text-sm text-ink dark:text-ink-dark">
+                {result.question}
+              </p>
+              <textarea
+                value={details}
+                maxLength={BLOCKAGE_DETAILS_MAX_LENGTH}
+                onChange={(event) => setDetails(event.target.value)}
+                rows={3}
+                required
+                className="w-full rounded-xl border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-brand dark:border-line-dark"
+              />
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button type="button" variant="secondary" onClick={onClose}>
+                  Agora não
+                </Button>
+                <Button type="submit">Responder e pedir de novo</Button>
+              </div>
+            </form>
+          )}
 
         {step === 'rejected' && result?.status === 'rejected' && (
           <div className="space-y-4">
-            <p className="text-sm text-ink dark:text-ink-dark">{result.message}</p>
+            <p className="text-sm text-ink dark:text-ink-dark">
+              {result.message}
+            </p>
             <div className="flex justify-end">
               <Button type="button" variant="secondary" onClick={onClose}>
                 Fechar
@@ -394,7 +410,9 @@ export function UnlockTaskDialog({
         title="Aplicar a sugestão?"
         description={
           patch
-            ? `Isso atualiza só o próximo passo, a energia e a estimativa da tarefa. O título permanece “${liveTask?.title ?? ''}”. O ciclo de foco não muda sozinho.`
+            ? `Isso atualiza só o próximo passo, a energia e a estimativa da tarefa. O título permanece “${
+                liveTask?.title ?? ''
+              }”. O ciclo de foco não muda sozinho.`
             : ''
         }
         confirmLabel="Sim, aplicar"
@@ -425,8 +443,8 @@ function CompletedPlan({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted dark:text-muted-dark">
-        Isto é uma sugestão para <strong>{task.title}</strong>. Nada foi
-        gravado na tarefa ainda.
+        Isto é uma sugestão para <strong>{task.title}</strong>. Nada foi gravado
+        na tarefa ainda.
       </p>
       <div>
         <h3 className="text-base font-bold">{plan.title}</h3>
@@ -452,7 +470,9 @@ function CompletedPlan({
         Foco sugerido: {patch.estimatedMinutes} min · Energia:{' '}
         {energyLabel(patch.energy)}
       </p>
-      <p className="text-sm text-ink dark:text-ink-dark">{plan.supportiveMessage}</p>
+      <p className="text-sm text-ink dark:text-ink-dark">
+        {plan.supportiveMessage}
+      </p>
       {applied && (
         <p className="text-sm text-ink dark:text-ink-dark" role="status">
           Sugestão aplicada. O título da tarefa continua o mesmo.

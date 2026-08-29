@@ -25,7 +25,12 @@ export function Settings() {
               Conectada como {session.email ?? 'conta autenticada'}. O JWT
               autentica o pedido de ajuda; a web não grava planos no Supabase.
             </p>
-            <Button variant="secondary" onClick={() => void signOut()}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                signOut()
+              }}
+            >
               Sair
             </Button>
           </div>

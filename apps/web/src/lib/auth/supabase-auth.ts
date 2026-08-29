@@ -1,4 +1,8 @@
-import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
+import {
+  createClient,
+  type Session,
+  type SupabaseClient,
+} from '@supabase/supabase-js'
 import {
   isPublicAuthConfigured,
   readPublicSupabasePublishableKey,
@@ -24,7 +28,19 @@ export function createSupabaseAuthClient(): AuthClient | null {
     return null
   }
 
-  const client = createClient(
+  const createAuthClient = createClient as unknown as (
+    url: string,
+    key: string,
+    options: {
+      auth: {
+        persistSession: boolean
+        autoRefreshToken: boolean
+        detectSessionInUrl: boolean
+      }
+    },
+  ) => SupabaseClient
+
+  const client = createAuthClient(
     readPublicSupabaseUrl(),
     readPublicSupabasePublishableKey(),
     {
@@ -34,7 +50,7 @@ export function createSupabaseAuthClient(): AuthClient | null {
         detectSessionInUrl: true,
       },
     },
-  ) as SupabaseClient
+  )
 
   return {
     async getSession() {

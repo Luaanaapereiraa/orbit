@@ -16,5 +16,9 @@ export function readPublicSupabasePublishableKey() {
 export function isPublicAuthConfigured() {
   const url = readPublicSupabaseUrl()
   const key = readPublicSupabasePublishableKey()
-  return url.length > 0 && key.length > 0 && !key.toLowerCase().startsWith('sb_secret')
+  return (
+    url.length > 0 &&
+    key.length > 0 &&
+    !key.toLowerCase().startsWith('sb_secret')
+  )
 }

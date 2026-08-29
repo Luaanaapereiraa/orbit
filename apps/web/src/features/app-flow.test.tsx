@@ -11,6 +11,11 @@ import {
 } from '../lib/storage'
 import { makeCycle, makeState, makeTask } from '../test/factories'
 
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
 function renderHome() {
   return render(
     <PomodoroProvider>

@@ -34,7 +34,9 @@ const fallbackAuth: AuthContextValue = {
   async signUp() {
     throw new Error('A autenticação ainda não está configurada.')
   },
-  async signOut() {},
+  async signOut() {
+    return undefined
+  },
 }
 
 const AuthContext = createContext<AuthContextValue>(fallbackAuth)
@@ -56,7 +58,8 @@ export function AuthProvider({
     () => (client === undefined ? createSupabaseAuthClient() : client),
     [client],
   )
-  const configured = client === undefined ? isPublicAuthConfigured() : !!authClient
+  const configured =
+    client === undefined ? isPublicAuthConfigured() : !!authClient
   const [session, setSession] = useState<AuthSession | null>(initialSession)
   const [status, setStatus] = useState<AuthStatus>(
     skipBootstrap ? (initialSession ? 'signed-in' : 'signed-out') : 'loading',

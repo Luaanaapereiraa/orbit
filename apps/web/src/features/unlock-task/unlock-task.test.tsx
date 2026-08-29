@@ -1,7 +1,11 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { UnlockTaskRunRequest, UnlockTaskRunResponse } from '@destravai/contracts'
+import type {
+  UnlockTaskRunRequest,
+  UnlockTaskRunResponse,
+} from '@destravai/contracts'
+import type { AuthClient } from '../../lib/auth/types'
 import { AuthProvider } from '../../contexts/AuthContext'
 import { PomodoroProvider } from '../../contexts/PomodoroContext'
 import { persistPomodoroState, STORAGE_KEY_DESTRAVAI } from '../../lib/storage'
@@ -50,6 +54,32 @@ function session() {
   }
 }
 
+function todayDateKey() {
+  const date = toLocalDateKey()
+  if (!date) {
+    throw new Error('expected a local date key')
+  }
+  return date
+}
+
+const authClient: AuthClient = {
+  async getSession() {
+    return null
+  },
+  async signIn() {
+    throw new Error('E-mail ou senha inválidos.')
+  },
+  async signUp() {
+    throw new Error('Não foi possível criar a conta.')
+  },
+  async signOut() {
+    return undefined
+  },
+  onAuthStateChange() {
+    return () => undefined
+  },
+}
+
 function storedTasks() {
   return JSON.parse(String(localStorage.getItem(STORAGE_KEY_DESTRAVAI))).state
     .tasks as Array<{
@@ -74,7 +104,7 @@ describe('Estou travada flow', () => {
     const task = makeTask({ title: 'Escrever o parágrafo' })
 
     render(
-      <AuthProvider skipBootstrap>
+      <AuthProvider skipBootstrap client={authClient}>
         <PomodoroProvider>
           <UnlockTaskDialog
             task={task}
@@ -109,7 +139,7 @@ describe('Estou travada flow', () => {
         ],
         dailyPlans: [
           makeDailyPlan({
-            date: '2026-01-15',
+            date: todayDateKey(),
             essentialTaskId: 'task-1',
           }),
         ],
@@ -127,7 +157,11 @@ describe('Estou travada flow', () => {
     const user = userEvent.setup()
 
     render(
-      <AuthProvider skipBootstrap initialSession={session()}>
+      <AuthProvider
+        skipBootstrap
+        client={authClient}
+        initialSession={session()}
+      >
         <PomodoroProvider>
           <UnlockTaskDialog
             task={makeTask({
@@ -147,9 +181,11 @@ describe('Estou travada flow', () => {
     await user.click(screen.getByRole('button', { name: 'Pedir ajuda' }))
 
     expect(
-      await screen.findByText('Isto é uma sugestão para'),
+      await screen.findByText(/Isto é uma sugestão para/),
     ).toBeInTheDocument()
-    expect(screen.getByText('Abrir o arquivo e escrever o titulo')).toBeInTheDocument()
+    expect(
+      screen.getByText('Abrir o arquivo e escrever o titulo'),
+    ).toBeInTheDocument()
 
     await waitFor(() => {
       const task = storedTasks().find((item) => item.id === 'task-1')
@@ -179,7 +215,11 @@ describe('Estou travada flow', () => {
     const user = userEvent.setup()
 
     render(
-      <AuthProvider skipBootstrap initialSession={session()}>
+      <AuthProvider
+        skipBootstrap
+        client={authClient}
+        initialSession={session()}
+      >
         <PomodoroProvider>
           <UnlockTaskDialog
             task={makeTask({ id: 'task-1', title: 'Escrever o parágrafo' })}
@@ -191,7 +231,9 @@ describe('Estou travada flow', () => {
     )
 
     await user.click(await screen.findByRole('button', { name: 'Pedir ajuda' }))
-    await user.click(await screen.findByRole('button', { name: 'Iniciar foco' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Iniciar foco' }),
+    )
 
     expect(navigation.push).toHaveBeenCalledWith('/focus')
     await waitFor(() => {
@@ -206,7 +248,7 @@ describe('Estou travada flow', () => {
         tasks: [makeTask({ id: 'task-1', title: 'Escrever o parágrafo' })],
         dailyPlans: [
           makeDailyPlan({
-            date: toLocalDateKey(),
+            date: todayDateKey(),
             essentialTaskId: 'task-1',
           }),
         ],
@@ -214,7 +256,11 @@ describe('Estou travada flow', () => {
     )
 
     render(
-      <AuthProvider skipBootstrap initialSession={session()}>
+      <AuthProvider
+        skipBootstrap
+        client={authClient}
+        initialSession={session()}
+      >
         <PomodoroProvider>
           <TodayPage />
         </PomodoroProvider>

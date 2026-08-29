@@ -11,7 +11,12 @@ export class UnlockTaskApiError extends Error {
   readonly code: string
   readonly requestId: string | null
 
-  constructor(status: number, code: string, message: string, requestId: string | null) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    requestId: string | null,
+  ) {
     super(message)
     this.name = 'UnlockTaskApiError'
     this.status = status
@@ -22,11 +27,13 @@ export class UnlockTaskApiError extends Error {
 
 const FRIENDLY_MESSAGES: Record<string, string> = {
   UNAUTHORIZED: 'Entre na sua conta para pedir ajuda.',
-  CONFLICT: 'Já existe uma ajuda em andamento para este pedido. Espere um pouco e tente de novo.',
+  CONFLICT:
+    'Já existe uma ajuda em andamento para este pedido. Espere um pouco e tente de novo.',
   AGENT_QUOTA_EXCEEDED: 'Você já usou o limite diário de ajuda. Volte amanhã.',
   RATE_LIMITED: 'Muitas tentativas seguidas. Espere um minuto.',
   BAD_GATEWAY: 'A ajuda falhou agora. Tente de novo em instantes.',
-  AGENT_MAX_TURNS_EXCEEDED: 'A ajuda não conseguiu fechar um plano. Tente de novo.',
+  AGENT_MAX_TURNS_EXCEEDED:
+    'A ajuda não conseguiu fechar um plano. Tente de novo.',
   SERVICE_UNAVAILABLE: 'A ajuda está indisponível no momento.',
   GATEWAY_TIMEOUT: 'A ajuda demorou demais. Tente de novo.',
   VALIDATION_ERROR: 'Alguns dados do pedido não são válidos.',
@@ -36,10 +43,19 @@ export function messageForUnlockError(error: UnlockTaskApiError) {
   return FRIENDLY_MESSAGES[error.code] ?? 'Não foi possível pedir ajuda agora.'
 }
 
+type UnlockTaskFetch = (
+  input: string,
+  init?: {
+    method?: string
+    headers?: Record<string, string>
+    body?: string
+  },
+) => Promise<Response>
+
 export async function requestUnlockTaskRun(
   request: UnlockTaskRunRequest,
   accessToken: string,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: UnlockTaskFetch = (input, init) => fetch(input, init),
 ): Promise<UnlockTaskRunResponse> {
   const response = await fetchImpl(
     `${readPublicApiUrl()}/v1/agents/unlock-task/runs`,

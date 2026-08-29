@@ -1,21 +1,14 @@
 import type { EnergyLevel, UnlockPlan, UnlockTaskRunRequest } from '@destravai/contracts'
 
-function splitMinutes(available: number): [number, number] {
-  const first = Math.max(1, Math.floor(available / 2))
-  const second = Math.max(1, available - first)
-  let minutes: [number, number] = [first, second]
-  let total = minutes[0] + minutes[1]
+export function splitMinutes(available: number): [number, number] {
+  const budget = Number.isFinite(available) ? Math.max(0, Math.floor(available)) : 0
 
-  while (total > available && minutes[1] > 1) {
-    minutes = [minutes[0], minutes[1] - 1]
-    total -= 1
-  }
-  while (total > available && minutes[0] > 1) {
-    minutes = [minutes[0] - 1, minutes[1]]
-    total -= 1
+  if (budget < 2) {
+    return [budget, 0]
   }
 
-  return minutes
+  const first = Math.max(1, Math.floor(budget / 2))
+  return [first, budget - first]
 }
 
 function localize(locale: UnlockTaskRunRequest['locale'], pt: string, en: string) {
