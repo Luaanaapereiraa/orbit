@@ -37,26 +37,27 @@ export function Dialog({
       return
     }
 
+    const dialog = node
     const previous =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null
 
-    if (typeof node.showModal === 'function') {
+    if (typeof dialog.showModal === 'function') {
       try {
-        if (!node.open) {
-          node.showModal()
+        if (!dialog.open) {
+          dialog.showModal()
         }
       } catch {
-        node.setAttribute('open', '')
+        dialog.setAttribute('open', '')
       }
     } else {
-      node.setAttribute('open', '')
+      dialog.setAttribute('open', '')
     }
 
     function focusUsefulControl() {
-      const marked = node.querySelector<HTMLElement>('[data-initial-focus]')
-      const body = node.querySelector<HTMLElement>('[data-dialog-body]')
+      const marked = dialog.querySelector<HTMLElement>('[data-initial-focus]')
+      const body = dialog.querySelector<HTMLElement>('[data-dialog-body]')
       const firstUseful =
         marked ??
         body?.querySelector<HTMLElement>(
@@ -73,8 +74,8 @@ export function Dialog({
 
     return () => {
       window.cancelAnimationFrame(frame)
-      if (typeof node.close === 'function' && node.open) {
-        node.close()
+      if (typeof dialog.close === 'function' && dialog.open) {
+        dialog.close()
       }
 
       previous?.focus?.()

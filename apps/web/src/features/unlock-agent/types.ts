@@ -13,9 +13,7 @@ export type SubmittedUnlockContext = {
   submittedAt: string
 }
 
-export type UnlockFieldErrors = Partial<
-  Record<keyof UnlockFormFields, string>
->
+export type UnlockFieldErrors = Partial<Record<keyof UnlockFormFields, string>>
 
 type UnlockStateBase = {
   fields: UnlockFormFields

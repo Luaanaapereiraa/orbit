@@ -11,7 +11,7 @@ function stripTrailingSlash(url: URL) {
 }
 
 export function readDestravaiApiUrl(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Record<string, string | undefined> = process.env,
 ): string {
   const raw = env.DESTRAVAI_API_URL?.trim()
   if (!raw) {
@@ -36,9 +36,7 @@ export function readDestravaiApiUrl(
   }
 
   if (parsed.username || parsed.password) {
-    throw new ServerEnvError(
-      'DESTRAVAI_API_URL não pode incluir credenciais.',
-    )
+    throw new ServerEnvError('DESTRAVAI_API_URL não pode incluir credenciais.')
   }
 
   return stripTrailingSlash(parsed)

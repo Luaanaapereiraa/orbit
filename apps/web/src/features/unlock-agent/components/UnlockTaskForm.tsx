@@ -73,11 +73,15 @@ export function UnlockTaskForm({
         <span className="text-sm font-medium">Tarefa</span>
         <select
           ref={taskRef}
-          data-initial-focus={firstInvalid === 'taskId' || !firstInvalid ? '' : undefined}
+          data-initial-focus={
+            firstInvalid === 'taskId' || !firstInvalid ? '' : undefined
+          }
           value={fields.taskId}
           disabled={disabled}
           aria-invalid={!!fieldErrors.taskId}
-          aria-describedby={fieldErrors.taskId ? 'unlock-task-error' : undefined}
+          aria-describedby={
+            fieldErrors.taskId ? 'unlock-task-error' : undefined
+          }
           onChange={(event) => onChange({ taskId: event.target.value })}
           className="h-11 w-full rounded-xl border border-line bg-transparent px-3 text-sm outline-none focus:border-brand dark:border-line-dark"
         >
@@ -114,7 +118,6 @@ export function UnlockTaskForm({
                 value={option.value}
                 checked={fields.blockageReason === option.value}
                 disabled={disabled}
-                aria-invalid={!!fieldErrors.blockageReason}
                 data-initial-focus={
                   firstInvalid === 'blockageReason' && index === 0
                     ? ''
@@ -139,7 +142,6 @@ export function UnlockTaskForm({
               key={option.value}
               type="button"
               disabled={disabled}
-              aria-invalid={!!fieldErrors.currentEnergy}
               data-initial-focus={
                 firstInvalid === 'currentEnergy' && index === 0 ? '' : undefined
               }
@@ -167,7 +169,6 @@ export function UnlockTaskForm({
               key={minutes}
               type="button"
               disabled={disabled}
-              aria-invalid={!!fieldErrors.availableMinutes}
               data-initial-focus={
                 firstInvalid === 'availableMinutes' && index === 0
                   ? ''
@@ -210,12 +211,12 @@ export function UnlockTaskForm({
           rows={3}
           className="w-full rounded-xl border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-brand dark:border-line-dark"
         />
-        {fieldErrors.blockageDetails ? (
-          <p id="unlock-details-error" className="text-sm text-danger">
-            {fieldErrors.blockageDetails}
-          </p>
-        ) : null}
       </label>
+      {fieldErrors.blockageDetails ? (
+        <p id="unlock-details-error" className="text-sm text-danger">
+          {fieldErrors.blockageDetails}
+        </p>
+      ) : null}
 
       {fields.blockageReason === 'other' && !fields.blockageDetails.trim() ? (
         <p className="text-sm text-danger" role="alert">

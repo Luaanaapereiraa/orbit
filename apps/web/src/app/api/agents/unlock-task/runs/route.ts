@@ -68,20 +68,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const upstream = await fetch(
-      `${apiUrl}/v1/agents/unlock-task/runs`,
-      {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-          accept: 'application/json',
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify(parsed.data),
-        cache: 'no-store',
-        signal: controller.signal,
+    const upstream = await fetch(`${apiUrl}/v1/agents/unlock-task/runs`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        accept: 'application/json',
+        'content-type': 'application/json',
       },
-    )
+      body: JSON.stringify(parsed.data),
+      cache: 'no-store',
+      signal: controller.signal,
+    })
 
     const raw: unknown = await upstream.json().catch(() => null)
 

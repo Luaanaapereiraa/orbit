@@ -424,7 +424,9 @@ describe('Estou travada apply identity', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Criar meu próximo passo' }),
     )
-    expect(await screen.findByText(/Isto é uma sugestão para/)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Isto é uma sugestão para/),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Usar este plano' }))
     await user.click(screen.getByRole('button', { name: 'complete-a' }))
     await user.click(screen.getByRole('button', { name: 'Usar este plano' }))
@@ -434,7 +436,9 @@ describe('Estou travada apply identity', () => {
         'Esta tarefa mudou enquanto o plano era criado. O plano não foi aplicado.',
       ),
     ).toBeInTheDocument()
-    expect(screen.queryByText('Plano aplicado à tarefa.')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Plano aplicado à tarefa.'),
+    ).not.toBeInTheDocument()
 
     const stored = storedTasks()
     expect(stored.find((item) => item.id === 'task-a')?.status).toBe('done')
@@ -465,9 +469,12 @@ describe('Estou travada apply identity', () => {
       ),
     ).toBeInTheDocument()
     expect(navigation.push).not.toHaveBeenCalled()
-    expect(storedTasks().find((item) => item.id === 'task-b')?.nextAction).toBeNull()
-    const cycles = JSON.parse(String(localStorage.getItem(STORAGE_KEY_DESTRAVAI)))
-      .state.cycles
+    expect(
+      storedTasks().find((item) => item.id === 'task-b')?.nextAction,
+    ).toBeNull()
+    const cycles = JSON.parse(
+      String(localStorage.getItem(STORAGE_KEY_DESTRAVAI)),
+    ).state.cycles
     expect(cycles).toEqual([])
   })
 
@@ -490,7 +497,9 @@ describe('Estou travada apply identity', () => {
         'Esta tarefa mudou enquanto o plano era criado. O plano não foi aplicado.',
       ),
     ).toBeInTheDocument()
-    expect(storedTasks().find((item) => item.id === 'task-b')?.nextAction).toBeNull()
+    expect(
+      storedTasks().find((item) => item.id === 'task-b')?.nextAction,
+    ).toBeNull()
   })
 
   it('applies only to A when A stays eligible', async () => {
@@ -536,7 +545,10 @@ describe('Estou travada apply identity', () => {
     const user = userEvent.setup()
     renderDialog(run)
 
-    await user.type(screen.getByLabelText('Detalhes (opcional)'), 'texto antigo')
+    await user.type(
+      screen.getByLabelText('Detalhes (opcional)'),
+      'texto antigo',
+    )
     await user.click(
       screen.getByRole('button', { name: 'Criar meu próximo passo' }),
     )
@@ -546,14 +558,13 @@ describe('Estou travada apply identity', () => {
         'Alguns dados do pedido não são válidos. Revise o formulário.',
       ),
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('Detalhes (opcional)')).toHaveValue(
-      'texto antigo',
-    )
+    const details = document.getElementById('unlock-details')
+    expect(details).toHaveValue('texto antigo')
     expect(screen.getByText('Detalhe inválido')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Criar meu próximo passo' }),
     ).toBeInTheDocument()
-    expect(document.activeElement).toBe(screen.getByLabelText('Detalhes (opcional)'))
+    expect(document.activeElement).toBe(details)
   })
 
   it('disables 409 retry until the cooldown ends', async () => {
@@ -569,7 +580,11 @@ describe('Estou travada apply identity', () => {
     })
     const user = userEvent.setup()
     render(
-      <AuthProvider skipBootstrap client={authClient} initialSession={session()}>
+      <AuthProvider
+        skipBootstrap
+        client={authClient}
+        initialSession={session()}
+      >
         <PomodoroProvider>
           <UnlockTaskDialog
             open
@@ -599,9 +614,13 @@ describe('Estou travada apply identity', () => {
     })
     await user.click(screen.getByRole('button', { name: 'Consultar de novo' }))
     expect(run).toHaveBeenCalledTimes(2)
-    expect(run.mock.calls[0]?.[0].clientRequestId).toBe(
-      run.mock.calls[1]?.[0].clientRequestId,
-    )
+    const firstBody = run.mock.calls.at(0)?.at(0) as
+      | UnlockTaskRunRequest
+      | undefined
+    const secondBody = run.mock.calls.at(1)?.at(0) as
+      | UnlockTaskRunRequest
+      | undefined
+    expect(firstBody?.clientRequestId).toBe(secondBody?.clientRequestId)
   })
 
   it('focuses the first useful control and keeps a single dialog', async () => {
@@ -636,4 +655,3 @@ describe('Estou travada apply identity', () => {
     })
   })
 })
-

@@ -23,7 +23,11 @@ export const UNLOCK_RETRY_COOLDOWN_MS = 1500
 type Action =
   | { type: 'reset'; fields: UnlockFormFields }
   | { type: 'patch'; fields: Partial<UnlockFormFields>; refreshId?: boolean }
-  | { type: 'submitting'; fields: UnlockFormFields; submitted: SubmittedUnlockContext }
+  | {
+      type: 'submitting'
+      fields: UnlockFormFields
+      submitted: SubmittedUnlockContext
+    }
   | {
       type: 'completed'
       response: Extract<UnlockTaskRunResponse, { status: 'completed' }>
@@ -44,7 +48,11 @@ type Action =
       error: UnlockAgentError
       retryAvailableAt: number | null
     }
-  | { type: 'formValidation'; error: UnlockAgentError; fieldErrors: UnlockFieldErrors }
+  | {
+      type: 'formValidation'
+      error: UnlockAgentError
+      fieldErrors: UnlockFieldErrors
+    }
   | { type: 'applied'; taskId: string }
   | { type: 'backToForm'; newRequestId?: boolean }
 

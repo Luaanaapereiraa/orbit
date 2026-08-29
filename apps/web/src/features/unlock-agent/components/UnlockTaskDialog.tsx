@@ -104,7 +104,7 @@ export function UnlockTaskDialog({
   const submitted = agent.state.submitted
   const submittedTask =
     submitted !== null
-      ? (tasks.find((task) => task.id === submitted.taskId) ?? null)
+      ? tasks.find((task) => task.id === submitted.taskId) ?? null
       : null
   const submittedEligible =
     submittedTask !== null && canRequestUnlock(submittedTask)
@@ -120,7 +120,8 @@ export function UnlockTaskDialog({
     agent.state.status === 'needs_clarification' ||
     agent.state.status === 'rejected'
 
-  const staleSubmittedTask = showingResult && submitted !== null && !submittedEligible
+  const staleSubmittedTask =
+    showingResult && submitted !== null && !submittedEligible
 
   const retryAvailableAt =
     agent.state.status === 'error' ? agent.state.retryAvailableAt : null
@@ -167,7 +168,13 @@ export function UnlockTaskDialog({
       return
     }
     setApplyError(null)
-    await agent.submit(taskForSubmit, dateKey, dailyPlans, getAccessToken, extraDetails)
+    await agent.submit(
+      taskForSubmit,
+      dateKey,
+      dailyPlans,
+      getAccessToken,
+      extraDetails,
+    )
   }
 
   function applyToSubmittedTask() {
@@ -257,7 +264,8 @@ export function UnlockTaskDialog({
           return
         }
       } else {
-        const target = tasks.find((task) => task.id === submitted.taskId) ?? null
+        const target =
+          tasks.find((task) => task.id === submitted.taskId) ?? null
         if (!target || !canRequestUnlock(target)) {
           setApplyError(STALE_TASK_MESSAGE)
           return
@@ -337,8 +345,8 @@ export function UnlockTaskDialog({
         confirm === 'focus'
           ? 'Usar este plano e começar o foco?'
           : confirm === 'apply'
-            ? 'Usar este plano?'
-            : 'Estou travada'
+          ? 'Usar este plano?'
+          : 'Estou travada'
       }
       description={
         confirm
@@ -412,8 +420,8 @@ export function UnlockTaskDialog({
         </div>
       ) : !formTask && agent.state.status === 'form' ? (
         <p className="text-sm text-muted dark:text-muted-dark" role="status">
-          Não há tarefa elegível agora. Capture ou reabra uma tarefa para
-          pedir ajuda.
+          Não há tarefa elegível agora. Capture ou reabra uma tarefa para pedir
+          ajuda.
         </p>
       ) : agent.state.status === 'submitting' ? (
         <UnlockTaskLoading
@@ -463,7 +471,9 @@ export function UnlockTaskDialog({
           retryDisabled={retryDisabled}
           retryHint={
             retryDisabled
-              ? `Aguarde ${Math.ceil(retryRemainingMs / 1000)}s para consultar de novo.`
+              ? `Aguarde ${Math.ceil(
+                  retryRemainingMs / 1000,
+                )}s para consultar de novo.`
               : null
           }
           onRetry={() => send()}
@@ -477,7 +487,7 @@ export function UnlockTaskDialog({
           selectedTask={formTask}
           onChange={agent.patchFields}
           onSubmit={() => send()}
-          disabled={agent.state.status === 'form' ? false : true}
+          disabled={agent.state.status !== 'form'}
           formError={agent.state.formError}
           fieldErrors={agent.state.fieldErrors}
         />

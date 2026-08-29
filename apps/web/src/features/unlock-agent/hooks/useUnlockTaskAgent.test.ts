@@ -25,6 +25,21 @@ const completed: UnlockTaskRunResponse = {
 
 const task = makeTask({ id: 'task-a', title: 'Tarefa A' })
 
+function startSubmit(
+  submit: (
+    task: ReturnType<typeof makeTask>,
+    dateKey: string,
+    dailyPlans: [],
+    getAccessToken: () => Promise<string | null>,
+  ) => Promise<void>,
+  nextTask = task,
+) {
+  return submit(nextTask, '2026-08-29', [], async () => 'tok').then(
+    () => undefined,
+    () => undefined,
+  )
+}
+
 describe('useUnlockTaskAgent concurrency', () => {
   it('sends only one request when submit is called twice in the same tick', async () => {
     let resolveRun: (value: UnlockTaskRunResponse) => void = () => undefined
@@ -50,9 +65,10 @@ describe('useUnlockTaskAgent concurrency', () => {
     })
 
     expect(run).toHaveBeenCalledTimes(1)
-    expect(run.mock.calls[0]?.[0].clientRequestId).toBe(
-      result.current.state.fields.clientRequestId,
-    )
+    const submittedBody = run.mock.calls.at(0)?.at(0)
+    expect(submittedBody).toMatchObject({
+      clientRequestId: result.current.state.fields.clientRequestId,
+    })
 
     await act(async () => {
       resolveRun(completed)
@@ -88,17 +104,15 @@ describe('useUnlockTaskAgent concurrency', () => {
     )
 
     await act(async () => {
-      void result.current.submit(task, '2026-08-29', [], async () => 'tok')
+      startSubmit(result.current.submit)
     })
     expect(result.current.state.status).toBe('submitting')
 
     await act(async () => {
       result.current.cancelWait()
-      void result.current.submit(
+      startSubmit(
+        result.current.submit,
         makeTask({ id: 'task-b', title: 'Tarefa B' }),
-        '2026-08-29',
-        [],
-        async () => 'tok',
       )
     })
 
@@ -136,15 +150,13 @@ describe('useUnlockTaskAgent concurrency', () => {
     )
 
     await act(async () => {
-      void result.current.submit(task, '2026-08-29', [], async () => 'tok')
+      startSubmit(result.current.submit)
     })
     await act(async () => {
       result.current.cancelWait()
-      void result.current.submit(
+      startSubmit(
+        result.current.submit,
         makeTask({ id: 'task-b', title: 'Tarefa B' }),
-        '2026-08-29',
-        [],
-        async () => 'tok',
       )
     })
     await act(async () => {
@@ -172,7 +184,7 @@ describe('useUnlockTaskAgent concurrency', () => {
     )
 
     await act(async () => {
-      void result.current.submit(task, '2026-08-29', [], async () => 'tok')
+      startSubmit(result.current.submit)
     })
     unmount()
     await act(async () => {

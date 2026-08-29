@@ -22,10 +22,7 @@ export function shouldHandleAuthProxy(pathname: string) {
   if (pathname === '/sw.js' || pathname.startsWith('/serwist/')) {
     return false
   }
-  if (
-    pathname === '/manifest.webmanifest' ||
-    pathname === '/manifest.json'
-  ) {
+  if (pathname === '/manifest.webmanifest' || pathname === '/manifest.json') {
     return false
   }
   if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$/i.test(pathname)) {

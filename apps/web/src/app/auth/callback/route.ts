@@ -10,7 +10,10 @@ export const dynamic = 'force-dynamic'
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
-function callbackRedirect(request: NextRequest, path: '/login?error=callback' | '/') {
+function callbackRedirect(
+  request: NextRequest,
+  path: '/login?error=callback' | '/',
+) {
   return NextResponse.redirect(new URL(path, request.url), {
     headers: NO_STORE,
   })
