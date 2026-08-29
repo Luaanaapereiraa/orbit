@@ -18,9 +18,10 @@ const PREVIEW_LIMIT = 3
 interface InboxPreviewProps {
   dateKey: string
   onEdit: (task: Task) => void
+  onUnlock: (task: Task) => void
 }
 
-export function InboxPreview({ dateKey, onEdit }: InboxPreviewProps) {
+export function InboxPreview({ dateKey, onEdit, onUnlock }: InboxPreviewProps) {
   const {
     tasks,
     dailyPlans,
@@ -113,6 +114,13 @@ export function InboxPreview({ dateKey, onEdit }: InboxPreviewProps) {
                   onClick={() => startFocusForTask(task.id)}
                 >
                   Iniciar foco
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="h-11"
+                  onClick={() => onUnlock(task)}
+                >
+                  Estou travada
                 </Button>
                 <Button
                   variant="ghost"

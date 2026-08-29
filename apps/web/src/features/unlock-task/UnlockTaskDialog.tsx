@@ -16,7 +16,7 @@ import { SignInForm } from '../auth/SignInForm'
 import { ConfirmDialog } from '../today/ConfirmDialog'
 import { useStartFocusForTask } from '../today/useStartFocusForTask'
 import { ENERGY_OPTIONS, energyLabel } from '../../lib/energy'
-import { useLocalDateKey } from '../../lib/local-date'
+import { toLocalDateKey, useLocalDateKey } from '../../lib/local-date'
 import {
   applyUnlockPlanToTask,
   unlockPlanTaskPatch,
@@ -65,7 +65,8 @@ export function UnlockTaskDialog({
     updateTaskEnergy,
     updateTaskEstimatedMinutes,
   } = usePomodoro()
-  const dateKey = useLocalDateKey(hydrated)
+  const observedDateKey = useLocalDateKey(hydrated)
+  const dateKey = observedDateKey ?? (hydrated ? toLocalDateKey() : null)
   const startFocusForTask = useStartFocusForTask()
   const liveTask = tasks.find((item) => item.id === task?.id) ?? task
 
@@ -396,7 +397,7 @@ export function UnlockTaskDialog({
             ? `Isso atualiza só o próximo passo, a energia e a estimativa da tarefa. O título permanece “${liveTask?.title ?? ''}”. O ciclo de foco não muda sozinho.`
             : ''
         }
-        confirmLabel="Aplicar à tarefa"
+        confirmLabel="Sim, aplicar"
         onConfirm={handleApply}
         onClose={() => setApplyOpen(false)}
       />

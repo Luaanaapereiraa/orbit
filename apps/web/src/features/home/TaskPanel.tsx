@@ -2,13 +2,17 @@
 
 import { type FormEvent, useState } from 'react'
 import { Plus, Trash } from '@phosphor-icons/react'
-import { tasksForCommonList } from '@destravai/core'
+import { tasksForCommonList, type Task } from '@destravai/core'
 import { usePomodoro } from '../../contexts/PomodoroContext'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { cn } from '../../lib/cn'
 
-export function TaskPanel() {
+interface TaskPanelProps {
+  onUnlock: (task: Task) => void
+}
+
+export function TaskPanel({ onUnlock }: TaskPanelProps) {
   const {
     tasks,
     selectedTaskId,
@@ -78,6 +82,13 @@ export function TaskPanel() {
                   className="flex-1 truncate text-left text-sm font-medium text-ink disabled:opacity-60 dark:text-ink-dark"
                 >
                   {task.title}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUnlock(task)}
+                  className="rounded-lg px-2 py-2 text-xs font-bold text-brand hover:bg-brand/10"
+                >
+                  Estou travada
                 </button>
                 <button
                   type="button"

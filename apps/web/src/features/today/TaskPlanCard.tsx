@@ -22,6 +22,7 @@ interface TaskPlanCardProps {
   dateKey: string
   variant: 'essential' | 'secondary'
   onEdit: (task: Task) => void
+  onUnlock: (task: Task) => void
   onCompleted?: (title: string) => void
 }
 
@@ -30,6 +31,7 @@ export function TaskPlanCard({
   dateKey,
   variant,
   onEdit,
+  onUnlock,
   onCompleted,
 }: TaskPlanCardProps) {
   const {
@@ -126,6 +128,13 @@ export function TaskPlanCard({
             <Button className="h-11" onClick={() => startFocusForTask(task.id)}>
               <Play size={16} weight="fill" aria-hidden />
               {alreadyFocusing ? 'Voltar ao foco' : 'Iniciar foco'}
+            </Button>
+            <Button
+              variant="secondary"
+              className="h-11"
+              onClick={() => onUnlock(task)}
+            >
+              Estou travada
             </Button>
             <Button
               variant="secondary"

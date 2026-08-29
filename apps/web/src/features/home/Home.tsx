@@ -1,11 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { HandPalm, Pause, Play, SkipForward } from '@phosphor-icons/react'
-import { formatClock, type CycleType } from '@destravai/core'
+import { formatClock, type CycleType, type Task } from '@destravai/core'
 import { usePomodoro } from '../../contexts/PomodoroContext'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ProgressRing } from './ProgressRing'
+import { UnlockTaskDialog } from '../unlock-task/UnlockTaskDialog'
 import { TaskPanel } from './TaskPanel'
 
 const typeLabels: Record<CycleType, string> = {
@@ -28,6 +30,7 @@ export function Home() {
     interruptCurrentCycle,
     skipCurrentCycle,
   } = usePomodoro()
+  const [unlocking, setUnlocking] = useState<Task | null>(null)
 
   const selectedTask = tasks.find((task) => task.id === selectedTaskId)
   const type = activeCycle?.type ?? 'focus'
@@ -125,7 +128,8 @@ export function Home() {
         </div>
       </Card>
 
-      <TaskPanel />
+      <TaskPanel onUnlock={setUnlocking} />
+      <UnlockTaskDialog task={unlocking} onClose={() => setUnlocking(null)} />
     </div>
   )
 }

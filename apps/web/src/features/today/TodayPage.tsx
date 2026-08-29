@@ -52,6 +52,7 @@ export function TodayPage() {
         <DailyPlanView
           dateKey={dateKey}
           onEdit={setEditing}
+          onUnlock={setUnlocking}
           onCompleted={(title) =>
             setCompletionMessage(
               `Concluída: ${title}. Ela permanece no seu plano de hoje.`,
@@ -59,7 +60,11 @@ export function TodayPage() {
           }
         />
         <div className="space-y-6">
-          <InboxPreview dateKey={dateKey} onEdit={setEditing} />
+          <InboxPreview
+            dateKey={dateKey}
+            onEdit={setEditing}
+            onUnlock={setUnlocking}
+          />
           <ActiveFocusCard />
         </div>
       </div>
@@ -69,6 +74,7 @@ export function TodayPage() {
       </p>
 
       <TaskEditor task={editing} onClose={() => setEditing(null)} />
+      <UnlockTaskDialog task={unlocking} onClose={() => setUnlocking(null)} />
     </div>
   )
 }

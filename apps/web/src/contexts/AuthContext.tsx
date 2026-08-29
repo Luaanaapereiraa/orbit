@@ -24,7 +24,20 @@ interface AuthContextValue {
   signOut: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+const fallbackAuth: AuthContextValue = {
+  status: 'signed-out',
+  session: null,
+  configured: false,
+  async signIn() {
+    throw new Error('A autenticação ainda não está configurada.')
+  },
+  async signUp() {
+    throw new Error('A autenticação ainda não está configurada.')
+  },
+  async signOut() {},
+}
+
+const AuthContext = createContext<AuthContextValue>(fallbackAuth)
 
 interface AuthProviderProps {
   children: ReactNode
@@ -141,9 +154,5 @@ export function AuthProvider({
 }
 
 export function useAuth() {
-  const value = useContext(AuthContext)
-  if (!value) {
-    throw new Error('useAuth must be used within AuthProvider')
-  }
-  return value
+  return useContext(AuthContext)
 }

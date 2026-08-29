@@ -15,12 +15,14 @@ import { PlanDayDialog } from './PlanDayDialog'
 interface DailyPlanViewProps {
   dateKey: string
   onEdit: (task: Task) => void
+  onUnlock: (task: Task) => void
   onCompleted: (title: string) => void
 }
 
 export function DailyPlanView({
   dateKey,
   onEdit,
+  onUnlock,
   onCompleted,
 }: DailyPlanViewProps) {
   const { dailyPlans, tasks } = usePomodoro()
@@ -54,6 +56,7 @@ export function DailyPlanView({
           task={resolved.essential}
           dateKey={dateKey}
           onEdit={onEdit}
+          onUnlock={onUnlock}
           onCompleted={onCompleted}
         />
       )}
@@ -64,6 +67,7 @@ export function DailyPlanView({
           task={task}
           dateKey={dateKey}
           onEdit={onEdit}
+          onUnlock={onUnlock}
           onCompleted={onCompleted}
         />
       ))}
