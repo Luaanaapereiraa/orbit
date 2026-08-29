@@ -9,6 +9,8 @@ const REDACT_PATHS = [
   'req.headers.apikey',
   'req.headers["x-supabase-key"]',
   'res.headers["set-cookie"]',
+  'supabaseSecretKey',
+  '*.supabaseSecretKey',
 ]
 
 export function createLoggerOptions(

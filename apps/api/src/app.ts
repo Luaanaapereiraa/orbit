@@ -29,10 +29,7 @@ export interface BuildAppOptions {
   includeTestRoutes?: boolean
   unlockAgentRunner?: UnlockAgentRunner
   contentModerator?: ContentModerator
-  unlockRepositoryFactory?: (input: {
-    userId: string
-    accessToken: string
-  }) => AgentRunRepository
+  unlockRepositoryFactory?: (input: { userId: string }) => AgentRunRepository
 }
 
 function resolveLogger(

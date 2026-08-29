@@ -132,7 +132,10 @@ export class UnlockTaskService {
     }
 
     try {
-      const result = await this.runAgentOrFallback(context)
+      const result =
+        run.status === 'fallback_pending'
+          ? await this.resumeFallback(context)
+          : await this.runAgentOrFallback(context)
       if (result.kind === 'persisted') {
         return result.response
       }
@@ -298,16 +301,19 @@ export class UnlockTaskService {
       }
     }
 
-    if (arbitration.kind === 'agent_won' || (arbitration.kind === 'already_terminal' && arbitration.plan)) {
-      const plan =
-        arbitration.kind === 'agent_won' ? arbitration.plan : arbitration.plan
-      if (!plan) {
-        throw AppError.badGateway()
-      }
+    if (arbitration.kind === 'persisted_plan_won') {
       return {
         kind: 'generated',
-        output: { status: 'completed', plan },
-        generationMode: arbitration.run.generationMode ?? 'agent',
+        output: { status: 'completed', plan: arbitration.plan },
+        generationMode: arbitration.generationMode,
+      }
+    }
+
+    if (arbitration.kind === 'already_terminal' && arbitration.plan) {
+      return {
+        kind: 'generated',
+        output: { status: 'completed', plan: arbitration.plan },
+        generationMode: arbitration.generationMode ?? 'agent',
       }
     }
 
@@ -333,6 +339,45 @@ export class UnlockTaskService {
         throw AppError.gatewayTimeout()
       }
       throw AppError.serviceUnavailable()
+    }
+  }
+
+  private async resumeFallback(
+    context: ReturnType<typeof createUnlockRunContext>,
+  ): Promise<AgentOutcome> {
+    const stored = await context.repository.getPlanByRunId({
+      runId: context.runId,
+      userId: context.userId,
+    })
+    if (stored) {
+      const current = await context.repository.getRun({
+        runId: context.runId,
+        userId: context.userId,
+      })
+      return {
+        kind: 'generated',
+        output: { status: 'completed', plan: stored.plan },
+        generationMode: current?.generationMode ?? 'fallback',
+      }
+    }
+
+    try {
+      const plan = await this.persistFallback(context)
+      const confirmed =
+        (
+          await context.repository.getPlanByRunId({
+            runId: context.runId,
+            userId: context.userId,
+          })
+        )?.plan ?? plan
+      return {
+        kind: 'generated',
+        output: { status: 'completed', plan: confirmed },
+        generationMode: 'fallback',
+        usage: undefined,
+      }
+    } catch {
+      throw AppError.gatewayTimeout()
     }
   }
 

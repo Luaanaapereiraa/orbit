@@ -45,8 +45,18 @@ export type SaveUnlockPlanResult =
 
 export type BeginFallbackResult =
   | { kind: 'timeout_won'; run: AgentRunRecord }
-  | { kind: 'agent_won'; run: AgentRunRecord; plan: UnlockPlan }
-  | { kind: 'already_terminal'; run: AgentRunRecord; plan: UnlockPlan | null }
+  | {
+      kind: 'persisted_plan_won'
+      run: AgentRunRecord
+      plan: UnlockPlan
+      generationMode: 'agent' | 'fallback'
+    }
+  | {
+      kind: 'already_terminal'
+      run: AgentRunRecord
+      plan: UnlockPlan | null
+      generationMode: 'agent' | 'fallback' | null
+    }
   | { kind: 'incompatible'; run: AgentRunRecord }
 
 export interface FinishUnlockRunInput {

@@ -113,10 +113,7 @@ export async function buildTestApp(
     includeTestRoutes?: boolean
     unlockAgentRunner?: UnlockAgentRunner
     contentModerator?: ContentModerator
-    unlockRepositoryFactory?: (input: {
-      userId: string
-      accessToken: string
-    }) => AgentRunRepository
+    unlockRepositoryFactory?: (input: { userId: string }) => AgentRunRepository
   } = {},
 ) {
   const app = await buildApp({

@@ -3,7 +3,7 @@ import { authenticate } from '../../auth/authenticate.js'
 import { UnlockTaskService } from '../../agents/unlock-task/service.js'
 import { createSdkUnlockAgentRunner } from '../../agents/unlock-task/runner.js'
 import {
-  createSupabaseUserClient,
+  createSupabaseBackendClient,
   SupabaseAgentRunRepository,
 } from '../../agents/unlock-task/repositories/supabase.js'
 import { AppError } from '../../errors/app-error.js'
@@ -47,11 +47,8 @@ export async function registerUnlockTaskRoute(app: FastifyInstance) {
         throw AppError.unauthorized()
       }
 
-      const header = request.headers.authorization ?? ''
-      const token = header.startsWith('Bearer ') ? header.slice(7) : ''
       const repository =
-        app.unlockRepositoryFactory?.({ userId: user.id, accessToken: token }) ??
-        defaultRepository(app, token)
+        app.unlockRepositoryFactory?.({ userId: user.id }) ?? defaultRepository(app)
 
       const runner = app.unlockAgentRunner ?? createSdkUnlockAgentRunner(app.appConfig)
       const service = new UnlockTaskService({
@@ -75,7 +72,7 @@ export async function registerUnlockTaskRoute(app: FastifyInstance) {
   )
 }
 
-function defaultRepository(app: FastifyInstance, accessToken: string) {
+function defaultRepository(app: FastifyInstance) {
   if (app.appConfig.agentRepository === 'memory') {
     if (!app.memoryAgentRepository) {
       throw AppError.internal()
@@ -83,8 +80,6 @@ function defaultRepository(app: FastifyInstance, accessToken: string) {
     return app.memoryAgentRepository
   }
 
-  return new SupabaseAgentRunRepository(
-    createSupabaseUserClient(app.appConfig, accessToken),
-  )
+  return new SupabaseAgentRunRepository(createSupabaseBackendClient(app.appConfig))
 }
 

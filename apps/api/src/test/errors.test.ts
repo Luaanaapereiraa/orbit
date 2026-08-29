@@ -109,4 +109,20 @@ describe('errors and validation', () => {
     expect(logs).not.toContain(secret)
     expect(logs.toLowerCase()).not.toContain('super-secret-token-value')
   })
+
+  it('does not write the persistence secret to logs or error payloads', async () => {
+    const capture = createLogCapture()
+    const secret = 'sb_secret_must_stay_off_logs'
+    app = await buildTestApp({
+      logger: { level: 'info', stream: capture.stream },
+      config: testConfig({
+        logLevel: 'info',
+        supabaseSecretKey: secret,
+      }),
+    })
+    const response = await app.inject({ method: 'GET', url: '/__test__/boom' })
+    expect(response.statusCode).toBe(500)
+    expect(JSON.stringify(response.json())).not.toContain(secret)
+    expect(capture.text()).not.toContain(secret)
+  })
 })

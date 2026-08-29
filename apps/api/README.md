@@ -21,7 +21,7 @@ src/
 │   ├── fallback.ts       # plano determinístico de 2 passos
 │   ├── tools/            # get_task_context, validate_unlock_plan, save_unlock_plan
 │   ├── guardrails/       # entrada (crise) e saída (protocolo, médico, contrato)
-│   ├── repositories/     # interface + Supabase (JWT) + memória (testes)
+│   ├── repositories/     # interface + Supabase (segredo server-only) + memória (testes)
 │   └── evals/            # casos offline e script opt-in
 └── routes/agents/unlock-task.ts
 ```
@@ -30,9 +30,37 @@ Isso é um **agente**, não um chatbot: o modelo só conclui um plano depois de 
 
 O SDK usado é `@openai/agents` (Responses API). Não há Assistants API, LangChain, chave no navegador nem chamada direta da web para a OpenAI.
 
-A cota e as transições de run/plano são mutadas só por funções SQL `SECURITY DEFINER`. O JWT autenticado pode `SELECT` as próprias linhas; não tem `INSERT`/`UPDATE`/`DELETE` nas tabelas internas.
+## Autenticação e autoridade
 
-O timeout cria um `AbortController`, passa `AbortSignal` ao SDK e arbitra no banco: `running` → save do agente **ou** `fallback_pending` → save do fallback. Não há dois planos por run.
+O navegador **não** persiste planos. Só chama:
+
+```http
+POST /v1/agents/unlock-task/runs
+Authorization: Bearer <supabase-access-token>
+```
+
+A web usa apenas a chave **pública** (publishable). O JWT identifica o usuário. A API valida esse JWT via JWKS e deriva `userId` de `sub`.
+
+As RPCs SQL (`start_unlock_agent_run`, `save_unlock_agent_plan`, `begin_unlock_fallback`, `finish_unlock_agent_run`) **não** são API pública. `anon`, `authenticated` e `PUBLIC` não têm `EXECUTE`. Um papel interno `destravai_agent_api` (NOLOGIN) recebe o execute mínimo; o segredo hospedado do projeto herda esse papel.
+
+Somente `apps/api` possui a credencial de persistência:
+
+| Variável | Quem usa |
+| --- | --- |
+| `SUPABASE_PUBLISHABLE_KEY` | JWKS/issuer e identificação do projeto. Pode ser a chave pública. |
+| `SUPABASE_SECRET_KEY` | Cliente server-only que executa as RPCs. **Nunca** no browser, **nunca** `NEXT_PUBLIC_*`, **nunca** no OpenAPI. |
+
+Configure `SUPABASE_SECRET_KEY` com o segredo do painel (API → secret). Não use a chave publishable, nem prefixo `sb_publishable` / `sb_anon`. Não cole o valor em `.env.example`.
+
+Rotação: gere um novo segredo no painel, atualize só o ambiente da API, reinicie o processo, revogue o anterior. O JWT do usuário **não** precisa mudar.
+
+O repositório envia o `userId` já autenticado (`p_user_id`). Toda query continua filtrada por esse usuário. A credencial server-side não substitui o isolamento: um `userId` A não lê nem grava a run de B.
+
+A cota e as transições de run/plano são mutadas só por essas funções `SECURITY DEFINER`. O JWT autenticado ainda pode `SELECT` as próprias linhas (RLS); não tem `INSERT`/`UPDATE`/`DELETE`.
+
+O timeout cria um `AbortController`, passa `AbortSignal` ao SDK e arbitra no banco: `running` → save do agente **ou** `fallback_pending` → save do fallback. Lease expirada em `fallback_pending` **permanece** `fallback_pending`. Não há dois planos por run. Plano já persistido devolve o `generationMode` gravado (`persisted_plan_won`), nunca um rótulo de agente para um plano fallback.
+
+As migrations precisam ser aplicadas e conferidas no catálogo real do Supabase. Os testes comuns leem o SQL; não substituem `supabase db push` / inspeção de grants.
 
 ## Fluxo de execução
 
@@ -69,9 +97,12 @@ Copie `.env.example` para `.env`. `process.env` só é lido em `loadConfig` (e n
 | `AGENT_DAILY_LIMIT` | Usado pelo repositório em memória e como documentação do padrão. Em Supabase o limite vem de `agent_quota_settings.daily_limit` (inicial 5). |
 | `AGENT_LEASE_MS` | Duração da lease de uma run `running`/`fallback_pending` (padrão 90s). Depois da expiração a mesma `clientRequestId` pode ser recuperada sem nova cota. |
 | `AGENT_REPOSITORY` | `supabase` em produção. `memory` só em testes ou desenvolvimento explícito. |
+| `SUPABASE_URL` | Projeto Supabase. Obrigatória em produção. |
+| `SUPABASE_PUBLISHABLE_KEY` | Chave pública do projeto. Não autoriza as RPCs internas. |
+| `SUPABASE_SECRET_KEY` | Segredo server-only da API. Obrigatória quando `AGENT_REPOSITORY=supabase`. Sem default. Sem prefixo público. |
 | `RUN_LIVE_AGENT_TESTS` | `false` nos testes comuns. Live eval só com `true`. |
 
-Produção também exige `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY`. Não use `service_role` nas requisições do usuário. O repositório abre um cliente Supabase com o JWT do caller. Mutações passam por RPC; o cliente não escreve tabelas do agente.
+Produção exige `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SECRET_KEY`. Não coloque o segredo em `apps/web` nem em variáveis `NEXT_PUBLIC_*`. O JWT do usuário autentica o request HTTP; o repositório abre um cliente server-only e passa `p_user_id`.
 
 Zod: `@destravai/api` e `@destravai/contracts` devem resolver **Zod 3.25.76** (`errorMap`). O Serwist da web pode continuar em Zod 4. Sempre rode `npm ci` **na raiz** do monorepo; não rode `npm ci` dentro de `apps/api`. A duplicidade de majors não está unificada no lockfile inteiro.
 
@@ -93,7 +124,7 @@ Mesma combinação de usuário e `clientRequestId`:
 - Corridas concorrentes não criam duas execuções nem dois planos (unique `(user_id, client_request_id)` + lock da cota).
 - `failed` pode ser re tentada **sem** consumir cota extra.
 
-A idempotência não é só em memória: no Postgres ela vive na constraint e na RPC `start_unlock_agent_run` (`SECURITY DEFINER`, identidade via `auth.uid()`).
+A idempotência não é só em memória: no Postgres ela vive na constraint e na RPC `start_unlock_agent_run` (`SECURITY DEFINER`, `p_user_id` da API).
 
 ## Cotas
 
@@ -201,9 +232,8 @@ curl -sS http://localhost:3333/v1/agents/unlock-task/runs \
 - Sem migração de tarefas do `localStorage`.
 - Repositório em memória não serve produção.
 - Rate limit por IP é in-memory (uma instância).
-- Execução `running` abandonada (crash) pode ser recuperada depois da lease; `failed` pode ser re tentada.
-- Cota no dia UTC, não no fuso local do usuário.
-- RLS e grants corretivos precisam ser validados num projeto Supabase real (os testes comuns cobrem SQL + memória).
+- Lease expirada: `running` continua `running`; `fallback_pending` continua `fallback_pending`; terminal não reabre. Sem cota extra.
+- RLS e grants corretivos precisam ser validados num projeto Supabase real (os testes comuns cobrem SQL + memória). Checklist: aplicar a sequência de migrations; `authenticated`/`anon`/`PUBLIC` sem `EXECUTE` nas RPCs; papel `destravai_agent_api` + segredo hospedado com execute; helpers sem execute público; `fallback_pending` não volta a `running`.
 
 ## Comandos
 

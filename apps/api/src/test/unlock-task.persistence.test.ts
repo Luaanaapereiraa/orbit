@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { MemoryAgentRunRepository } from '../agents/unlock-task/repositories/memory.js'
-import { createSupabaseUserClient } from '../agents/unlock-task/repositories/supabase.js'
+import { createSupabaseBackendClient } from '../agents/unlock-task/repositories/supabase.js'
 import { testConfig, validUnlockPlan, validUnlockRequest } from './helpers.js'
 
 const USER = 'user-1'
@@ -170,24 +170,46 @@ describe('unlock-task persistence', () => {
     expect(leaked).toBeNull()
   })
 
-  it('creates the Supabase client with the user JWT and publishable key', () => {
-    const config = testConfig()
-    const client = createSupabaseUserClient(config, 'user-access-token')
-    expect(config.supabasePublishableKey).not.toContain('service_role')
+  it('creates the backend client with the server secret and no user JWT', () => {
+    const secret = 'sb_secret_test_backend'
+    const config = testConfig({
+      supabaseSecretKey: secret,
+      agentRepository: 'supabase',
+    })
+    const client = createSupabaseBackendClient(config)
+    expect(config.supabasePublishableKey).not.toBe(secret)
+    expect(config.supabaseSecretKey).toBe(secret)
+    expect(createSupabaseBackendClient.length).toBe(1)
     expect(client).toBeTruthy()
   })
 
-  it('does not reference service_role in persistence source or SQL', () => {
-    const files = [
+  it('forwards the authenticated user id on every RPC and ignores a user access token', () => {
+    const source = readFileSync(
       resolve(process.cwd(), 'src/agents/unlock-task/repositories/supabase.ts'),
-      resolve(process.cwd(), '../../supabase/migrations/20260828120000_agent_runs.sql'),
-      resolve(process.cwd(), '../../supabase/migrations/20260828120100_unlock_plans.sql'),
-      resolve(process.cwd(), '../../supabase/migrations/20260828180000_unlock_task_quota.sql'),
-      resolve(process.cwd(), '../../supabase/migrations/20260828220000_unlock_task_security.sql'),
-    ]
-    for (const file of files) {
-      const source = readFileSync(file, 'utf8')
-      expect(source).not.toMatch(/service_role/)
-    }
+      'utf8',
+    )
+    expect(source).toMatch(/p_user_id: input.userId/)
+    expect(source).toMatch(/createClient\(config.supabaseUrl, config.supabaseSecretKey/)
+    expect(source).not.toMatch(/accessToken/)
+    expect(source).not.toMatch(/user-access-token/)
+    expect(source).not.toMatch(/Bearer /)
+    expect(source).toMatch(/persistence_failed/)
+  })
+
+  it('does not reference the hosted secret role name in TypeScript persistence code', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/agents/unlock-task/repositories/supabase.ts'),
+      'utf8',
+    )
+    expect(source).not.toMatch(/service_role/)
+    const sql = readFileSync(
+      resolve(
+        process.cwd(),
+        '../../supabase/migrations/20260829120000_unlock_task_backend_authority.sql',
+      ),
+      'utf8',
+    )
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.start_unlock_agent_run/)
+    expect(sql).toMatch(/FROM anon, authenticated/)
   })
 })

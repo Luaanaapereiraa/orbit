@@ -84,6 +84,7 @@ describe('unlock-task evals and source guards', () => {
     expect(joined).not.toMatch(/from ['"]langchain/)
     expect(joined).not.toMatch(/openai\.beta\.assistants/)
     expect(joined).not.toMatch(/service_role/)
+    expect(joined).not.toMatch(/agent_won/)
     expect(joined).not.toMatch(/sk-[a-zA-Z0-9]{20,}/)
     expect(unlockRunOptions(testConfig(), createUnlockRunContext({
       runId: 'run',

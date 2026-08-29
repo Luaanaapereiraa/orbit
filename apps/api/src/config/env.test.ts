@@ -15,6 +15,7 @@ describe('loadConfig', () => {
     SUPABASE_JWT_AUDIENCE: 'authenticated',
     OPENAI_MODEL: 'test-model',
     OPENAI_API_KEY: 'sk-test',
+    SUPABASE_SECRET_KEY: 'sb_secret_test',
   }
 
   it('parses development env and boolean false', () => {
@@ -64,5 +65,55 @@ describe('loadConfig', () => {
         AGENT_REPOSITORY: 'memory',
       }),
     ).toThrow(ConfigError)
+  })
+
+  it('requires a server-only secret when the agent repository is supabase', () => {
+    expect(() =>
+      loadConfig({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        SUPABASE_SECRET_KEY: '',
+      }),
+    ).toThrow(ConfigError)
+
+    expect(() =>
+      loadConfig({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        SUPABASE_SECRET_KEY: 'sb_publishable_not_a_secret',
+      }),
+    ).toThrow(ConfigError)
+
+    expect(() =>
+      loadConfig({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        SUPABASE_SECRET_KEY: 'pub-key',
+      }),
+    ).toThrow(ConfigError)
+
+    const leaked = 'sb_secret_must_not_appear'
+    try {
+      loadConfig({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        SUPABASE_SECRET_KEY: `sb_publishable_${leaked}`,
+      })
+      throw new Error('expected ConfigError')
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigError)
+      expect(String(error)).not.toContain(leaked)
+    }
+  })
+
+  it('allows tests to use the memory repository without a secret', () => {
+    const config = loadConfig({
+      ...baseEnv,
+      NODE_ENV: 'test',
+      AGENT_REPOSITORY: 'memory',
+      SUPABASE_SECRET_KEY: '',
+    })
+    expect(config.agentRepository).toBe('memory')
+    expect(config.supabaseSecretKey).toBe('')
   })
 })

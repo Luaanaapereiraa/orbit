@@ -35,6 +35,7 @@ export interface AppConfig {
   enableApiDocs: boolean
   supabaseUrl: string
   supabasePublishableKey: string
+  supabaseSecretKey: string
   jwtAudience: string
   jwtIssuer: string
   jwksUrl: string
@@ -82,6 +83,7 @@ const EnvSchema = z.object({
   ),
   SUPABASE_URL: z.string().optional().default(''),
   SUPABASE_PUBLISHABLE_KEY: z.string().optional().default(''),
+  SUPABASE_SECRET_KEY: z.string().optional().default(''),
   SUPABASE_JWT_AUDIENCE: z.string().min(1).default('authenticated'),
   OPENAI_API_KEY: z.string().optional().default(''),
   OPENAI_MODEL: z.string().optional().default(''),
@@ -146,6 +148,25 @@ function supabaseAuthEndpoints(supabaseUrl: string) {
   }
 }
 
+function assertServerOnlySecret(secret: string, publishableKey: string) {
+  if (!secret) {
+    throw new ConfigError('SUPABASE_SECRET_KEY is required')
+  }
+
+  const normalized = secret.toLowerCase()
+  if (
+    normalized.startsWith('sb_publishable') ||
+    normalized.startsWith('sb_anon') ||
+    normalized.startsWith('next_public_')
+  ) {
+    throw new ConfigError('SUPABASE_SECRET_KEY is invalid')
+  }
+
+  if (secret === publishableKey) {
+    throw new ConfigError('SUPABASE_SECRET_KEY must not match SUPABASE_PUBLISHABLE_KEY')
+  }
+}
+
 function assertValidUrl(value: string, field: string) {
   try {
     const parsed = new URL(value)
@@ -175,6 +196,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
   const corsOrigins = parseCorsOrigins(parsed.CORS_ORIGINS)
   const supabaseUrl = parsed.SUPABASE_URL.trim()
   const supabasePublishableKey = parsed.SUPABASE_PUBLISHABLE_KEY.trim()
+  const supabaseSecretKey = parsed.SUPABASE_SECRET_KEY.trim()
 
   if (parsed.NODE_ENV === 'production') {
     if (!supabaseUrl) {
@@ -206,6 +228,10 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     throw new ConfigError('AGENT_REPOSITORY must be supabase in production')
   }
 
+  if (agentRepository === 'supabase') {
+    assertServerOnlySecret(supabaseSecretKey, supabasePublishableKey)
+  }
+
   if (supabaseUrl) {
     assertValidUrl(supabaseUrl, 'SUPABASE_URL')
   }
@@ -222,6 +248,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     enableApiDocs: parsed.ENABLE_API_DOCS,
     supabaseUrl,
     supabasePublishableKey,
+    supabaseSecretKey,
     jwtAudience: parsed.SUPABASE_JWT_AUDIENCE,
     jwtIssuer,
     jwksUrl,

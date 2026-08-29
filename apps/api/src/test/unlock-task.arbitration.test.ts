@@ -330,10 +330,142 @@ describe('unlock-task arbitration, lease, errors and OpenAPI', () => {
     repository.expireLease(USER_ID, input.clientRequestId)
     const recovered = await repository.startRun(input)
     expect(recovered.kind).toBe('created')
+    if (recovered.kind === 'created') {
+      expect(recovered.run.status).toBe('running')
+    }
     expect(repository.quotaUsed(USER_ID)).toBe(1)
   })
 
-  it('recovers an expired lease atomically under concurrent retries', async () => {
+  it('recovers an expired fallback_pending lease without returning to running', async () => {
+    const repository = new MemoryAgentRunRepository()
+    const input = {
+      userId: USER_ID,
+      clientRequestId: validUnlockRequest().clientRequestId,
+      blockageReason: 'dont_know_where_to_start' as const,
+      promptVersion: 'unlock-v1',
+      dailyLimit: 5,
+    }
+    const first = await repository.startRun(input)
+    if (first.kind !== 'created') {
+      throw new Error('expected created')
+    }
+    const claimed = await repository.beginFallback({
+      runId: first.run.id,
+      userId: USER_ID,
+    })
+    expect(claimed.kind).toBe('timeout_won')
+    repository.expireLease(USER_ID, input.clientRequestId)
+    const recovered = await repository.startRun(input)
+    expect(recovered.kind).toBe('created')
+    if (recovered.kind !== 'created') {
+      throw new Error('expected recovered fallback')
+    }
+    expect(recovered.run.status).toBe('fallback_pending')
+    expect(repository.quotaUsed(USER_ID)).toBe(1)
+
+    const lateAgent = await repository.savePlan({
+      runId: recovered.run.id,
+      userId: USER_ID,
+      plan: validUnlockPlan(),
+      generationMode: 'agent',
+    })
+    expect(lateAgent.kind).toBe('rejected')
+
+    const fallback = await repository.savePlan({
+      runId: recovered.run.id,
+      userId: USER_ID,
+      plan: validUnlockPlan(),
+      generationMode: 'fallback',
+    })
+    expect(fallback.kind).toBe('saved')
+  })
+
+  it('recovers an expired fallback_pending lease with a single winner', async () => {
+    const repository = new MemoryAgentRunRepository()
+    const input = {
+      userId: USER_ID,
+      clientRequestId: validUnlockRequest().clientRequestId,
+      blockageReason: 'dont_know_where_to_start' as const,
+      promptVersion: 'unlock-v1',
+    }
+    const first = await repository.startRun(input)
+    if (first.kind !== 'created') {
+      throw new Error('expected created')
+    }
+    await repository.beginFallback({ runId: first.run.id, userId: USER_ID })
+    repository.expireLease(USER_ID, input.clientRequestId)
+    const [a, b] = await Promise.all([
+      repository.startRun(input),
+      repository.startRun(input),
+    ])
+    const kinds = [a.kind, b.kind].sort()
+    expect(kinds).toEqual(['created', 'in_progress'])
+    const recovered = a.kind === 'created' ? a.run : b.kind === 'created' ? b.run : null
+    expect(recovered?.status).toBe('fallback_pending')
+    expect(repository.quotaUsed(USER_ID)).toBe(1)
+  })
+
+  it('classifies an existing agent plan as persisted_plan_won with agent mode', async () => {
+    const repository = new MemoryAgentRunRepository()
+    const started = await repository.startRun({
+      userId: USER_ID,
+      clientRequestId: validUnlockRequest().clientRequestId,
+      blockageReason: 'dont_know_where_to_start',
+      promptVersion: 'unlock-v1',
+    })
+    if (started.kind !== 'created') {
+      throw new Error('expected created')
+    }
+    const plan = validUnlockPlan()
+    await repository.savePlan({
+      runId: started.run.id,
+      userId: USER_ID,
+      plan,
+      generationMode: 'agent',
+    })
+    const arbitration = await repository.beginFallback({
+      runId: started.run.id,
+      userId: USER_ID,
+    })
+    expect(arbitration.kind).toBe('persisted_plan_won')
+    if (arbitration.kind === 'persisted_plan_won') {
+      expect(arbitration.generationMode).toBe('agent')
+      expect(arbitration.plan).toEqual(plan)
+    }
+  })
+
+  it('classifies an existing fallback plan as persisted_plan_won with fallback mode', async () => {
+    const repository = new MemoryAgentRunRepository()
+    const started = await repository.startRun({
+      userId: USER_ID,
+      clientRequestId: '550e8400-e29b-41d4-a716-446655440021',
+      blockageReason: 'dont_know_where_to_start',
+      promptVersion: 'unlock-v1',
+    })
+    if (started.kind !== 'created') {
+      throw new Error('expected created')
+    }
+    await repository.beginFallback({ runId: started.run.id, userId: USER_ID })
+    const plan = validUnlockPlan({ title: 'Plano fallback' })
+    await repository.savePlan({
+      runId: started.run.id,
+      userId: USER_ID,
+      plan,
+      generationMode: 'fallback',
+    })
+    const arbitration = await repository.beginFallback({
+      runId: started.run.id,
+      userId: USER_ID,
+    })
+    expect(arbitration.kind).toBe('persisted_plan_won')
+    if (arbitration.kind === 'persisted_plan_won') {
+      expect(arbitration.generationMode).toBe('fallback')
+      expect(arbitration.plan.title).toBe('Plano fallback')
+    }
+    expect(JSON.stringify(arbitration)).not.toMatch(/agent_won/)
+  })
+
+  it('recovers an expired running lease atomically under concurrent retries', async () => {
     const repository = new MemoryAgentRunRepository()
     const input = {
       userId: USER_ID,
@@ -351,6 +483,99 @@ describe('unlock-task arbitration, lease, errors and OpenAPI', () => {
     const kinds = [a.kind, b.kind].sort()
     expect(kinds).toEqual(['created', 'in_progress'])
     expect(repository.quotaUsed(USER_ID)).toBe(1)
+  })
+
+  it('resumes fallback after lease expiry without calling the agent runner', async () => {
+    const repository = new MemoryAgentRunRepository()
+    const started = await repository.startRun({
+      userId: USER_ID,
+      clientRequestId: '550e8400-e29b-41d4-a716-446655440022',
+      blockageReason: 'dont_know_where_to_start',
+      promptVersion: 'unlock-v1',
+    })
+    if (started.kind !== 'created') {
+      throw new Error('expected created')
+    }
+    await repository.beginFallback({
+      runId: started.run.id,
+      userId: USER_ID,
+    })
+    repository.expireLease(USER_ID, '550e8400-e29b-41d4-a716-446655440022')
+
+    let runnerCalled = false
+    const { token, server } = await setup({
+      repository,
+      runner: {
+        async run() {
+          runnerCalled = true
+          throw new AgentMaxTurnsError()
+        },
+      },
+    })
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/agents/unlock-task/runs',
+      headers: { authorization: `Bearer ${token}` },
+      payload: validUnlockRequest({
+        clientRequestId: '550e8400-e29b-41d4-a716-446655440022',
+      }),
+    })
+    expect(runnerCalled).toBe(false)
+    expect(response.statusCode).toBe(200)
+    const body = UnlockTaskRunResponseSchema.parse(response.json())
+    expect(body.status).toBe('completed')
+    if (body.status === 'completed') {
+      expect(body.generationMode).toBe('fallback')
+    }
+  })
+
+  it('returns HTTP generationMode fallback when a fallback plan already won', async () => {
+    const repository = new MemoryAgentRunRepository()
+    const started = await repository.startRun({
+      userId: USER_ID,
+      clientRequestId: '550e8400-e29b-41d4-a716-446655440023',
+      blockageReason: 'dont_know_where_to_start',
+      promptVersion: 'unlock-v1',
+    })
+    if (started.kind !== 'created') {
+      throw new Error('expected created')
+    }
+    await repository.beginFallback({
+      runId: started.run.id,
+      userId: USER_ID,
+    })
+    const plan = validUnlockPlan({ title: 'Plano ja persistido' })
+    await repository.savePlan({
+      runId: started.run.id,
+      userId: USER_ID,
+      plan,
+      generationMode: 'fallback',
+    })
+    repository.expireLease(USER_ID, '550e8400-e29b-41d4-a716-446655440023')
+
+    const { token, server } = await setup({
+      repository,
+      runner: {
+        async run() {
+          throw new AgentMaxTurnsError()
+        },
+      },
+    })
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/agents/unlock-task/runs',
+      headers: { authorization: `Bearer ${token}` },
+      payload: validUnlockRequest({
+        clientRequestId: '550e8400-e29b-41d4-a716-446655440023',
+      }),
+    })
+    expect(response.statusCode).toBe(200)
+    const body = UnlockTaskRunResponseSchema.parse(response.json())
+    expect(body.status).toBe('completed')
+    if (body.status === 'completed') {
+      expect(body.generationMode).toBe('fallback')
+      expect(body.plan.title).toBe('Plano ja persistido')
+    }
   })
 
   it('does not recover a completed run with an old lease', async () => {

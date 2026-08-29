@@ -61,17 +61,38 @@ function planFromRpc(row: Record<string, unknown> | null): UnlockPlan | null {
   return planFromRow(row)
 }
 
-export function createSupabaseUserClient(
-  config: AppConfig,
-  accessToken: string,
-): SupabaseClient {
-  return createClient(config.supabaseUrl, config.supabasePublishableKey, {
+function persistenceFailed(): Error {
+  return new Error('persistence_failed')
+}
+
+function isInvalidTransition(error: unknown) {
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  const candidate = error as { code?: unknown; message?: unknown }
+  if (candidate.code === '22023') {
+    return true
+  }
+  return typeof candidate.message === 'string' && candidate.message.includes('invalid run transition')
+}
+
+function generationModeFrom(
+  value: unknown,
+  fallback: 'agent' | 'fallback' | null,
+): 'agent' | 'fallback' | null {
+  if (value === 'agent' || value === 'fallback') {
+    return value
+  }
+  return fallback
+}
+
+export function createSupabaseBackendClient(config: AppConfig): SupabaseClient {
+  if (!config.supabaseSecretKey) {
+    throw new Error('persistence_failed')
+  }
+
+  return createClient(config.supabaseUrl, config.supabaseSecretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
   }) as unknown as SupabaseClient
 }
 
@@ -85,16 +106,16 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
     promptVersion: string
     dailyLimit?: number
   }): Promise<StartUnlockRunResult> {
-    void input.userId
     void input.dailyLimit
     const { data, error } = await this.client.rpc('start_unlock_agent_run', {
+      p_user_id: input.userId,
       p_client_request_id: input.clientRequestId,
       p_blockage_reason: input.blockageReason,
       p_prompt_version: input.promptVersion,
     })
 
     if (error) {
-      throw error
+      throw persistenceFailed()
     }
 
     const payload = data as { kind: string; run?: Record<string, unknown> }
@@ -102,9 +123,12 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
       return { kind: 'quota_exceeded' }
     }
     if (!payload.run) {
-      throw new Error('invalid_start_payload')
+      throw persistenceFailed()
     }
     const run = mapRun(payload.run)
+    if (run.userId !== input.userId) {
+      throw persistenceFailed()
+    }
     if (payload.kind === 'in_progress') {
       return { kind: 'in_progress', run }
     }
@@ -120,15 +144,15 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
     plan: UnlockPlan
     generationMode: 'agent' | 'fallback'
   }): Promise<SaveUnlockPlanResult> {
-    void input.userId
     const { data, error } = await this.client.rpc('save_unlock_agent_plan', {
+      p_user_id: input.userId,
       p_run_id: input.runId,
       p_plan: input.plan,
       p_generation_mode: input.generationMode,
     })
 
     if (error) {
-      throw error
+      throw persistenceFailed()
     }
 
     const payload = data as {
@@ -150,7 +174,7 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
     }
 
     if (payload.kind !== 'saved' || !payload.plan_id || !payload.plan) {
-      throw new Error('invalid_save_payload')
+      throw persistenceFailed()
     }
 
     return {
@@ -165,42 +189,59 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
     runId: string
     userId: string
   }): Promise<BeginFallbackResult> {
-    void input.userId
     const { data, error } = await this.client.rpc('begin_unlock_fallback', {
+      p_user_id: input.userId,
       p_run_id: input.runId,
     })
 
     if (error) {
-      throw error
+      throw persistenceFailed()
     }
 
     const payload = data as {
       kind: string
+      generation_mode?: unknown
       run?: Record<string, unknown>
       plan?: Record<string, unknown> | null
     }
 
     if (!payload.run) {
-      throw new Error('invalid_fallback_payload')
+      throw persistenceFailed()
     }
 
     const run = mapRun(payload.run)
+    if (run.userId !== input.userId) {
+      throw persistenceFailed()
+    }
     const plan = planFromRpc(payload.plan ?? null)
 
     if (payload.kind === 'timeout_won') {
       return { kind: 'timeout_won', run }
     }
-    if (payload.kind === 'agent_won' && plan) {
-      return { kind: 'agent_won', run, plan }
+    if (payload.kind === 'persisted_plan_won' && plan) {
+      const generationMode = generationModeFrom(
+        payload.generation_mode,
+        run.generationMode ?? (run.status === 'fallback_pending' ? 'fallback' : 'agent'),
+      )
+      if (!generationMode) {
+        throw persistenceFailed()
+      }
+      return { kind: 'persisted_plan_won', run, plan, generationMode }
     }
     if (payload.kind === 'already_terminal') {
-      return { kind: 'already_terminal', run, plan }
+      return {
+        kind: 'already_terminal',
+        run,
+        plan,
+        generationMode: generationModeFrom(payload.generation_mode, run.generationMode),
+      }
     }
     return { kind: 'incompatible', run }
   }
 
   async finishRun(input: FinishUnlockRunInput): Promise<AgentRunRecord> {
     const { data, error } = await this.client.rpc('finish_unlock_agent_run', {
+      p_user_id: input.userId,
       p_run_id: input.runId,
       p_status: input.status,
       p_prompt_version: input.promptVersion,
@@ -216,16 +257,20 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
     })
 
     if (error) {
-      if (error.message?.includes('invalid run transition')) {
+      if (isInvalidTransition(error)) {
         throw new InvalidRunTransitionError()
       }
-      throw error
+      throw persistenceFailed()
     }
     if (!data) {
-      throw new Error('finish_failed')
+      throw persistenceFailed()
     }
 
-    return mapRun(data as Record<string, unknown>)
+    const run = mapRun(data as Record<string, unknown>)
+    if (run.userId !== input.userId) {
+      throw persistenceFailed()
+    }
+    return run
   }
 
   async getPlanByRunId(input: { runId: string; userId: string }) {
@@ -237,7 +282,7 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
       .maybeSingle()
 
     if (error) {
-      throw error
+      throw persistenceFailed()
     }
     if (!data) {
       return null
@@ -258,11 +303,15 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
       .maybeSingle()
 
     if (error) {
-      throw error
+      throw persistenceFailed()
     }
     if (!data) {
       return null
     }
-    return mapRun(data as Record<string, unknown>)
+    const run = mapRun(data as Record<string, unknown>)
+    if (run.userId !== input.userId) {
+      return null
+    }
+    return run
   }
 }

@@ -43,7 +43,7 @@ function transitionAllowed(
   ) {
     return true
   }
-  if (from === 'fallback_pending' && (to === 'completed' || to === 'failed')) {
+  if (from === 'fallback_pending' && (to === 'completed' || to === 'failed' || to === 'rejected')) {
     return true
   }
   return false
@@ -111,9 +111,11 @@ export class MemoryAgentRunRepository implements AgentRunRepository {
     if (existing) {
       if (isActive(existing.status)) {
         if (this.leaseExpired(existing)) {
+          const recoveredStatus =
+            existing.status === 'fallback_pending' ? 'fallback_pending' : 'running'
           const recovered: AgentRunRecord = {
             ...existing,
-            status: 'running',
+            status: recoveredStatus,
             errorCode: null,
             leaseExpiresAt: this.leaseExpiresAt(),
             updatedAt: this.clock().toISOString(),
@@ -214,6 +216,7 @@ export class MemoryAgentRunRepository implements AgentRunRepository {
     this.plans.set(input.runId, { planId, plan: input.plan })
     this.runs.set(this.key(current.userId, current.clientRequestId), {
       ...current,
+      generationMode: input.generationMode,
       leaseExpiresAt: this.leaseExpiresAt(),
       updatedAt: this.clock().toISOString(),
     })
@@ -245,11 +248,20 @@ export class MemoryAgentRunRepository implements AgentRunRepository {
         kind: 'already_terminal',
         run: current,
         plan: stored?.plan ?? null,
+        generationMode: current.generationMode,
       }
     }
 
     if (stored) {
-      return { kind: 'agent_won', run: current, plan: stored.plan }
+      const generationMode =
+        current.generationMode ??
+        (current.status === 'fallback_pending' ? 'fallback' : 'agent')
+      return {
+        kind: 'persisted_plan_won',
+        run: current,
+        plan: stored.plan,
+        generationMode,
+      }
     }
 
     if (current.status === 'failed') {

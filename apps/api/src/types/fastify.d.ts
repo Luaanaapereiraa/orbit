@@ -12,10 +12,7 @@ declare module 'fastify' {
     unlockAgentRunner?: UnlockAgentRunner
     contentModerator?: ContentModerator
     memoryAgentRepository?: MemoryAgentRunRepository
-    unlockRepositoryFactory?: (input: {
-      userId: string
-      accessToken: string
-    }) => AgentRunRepository
+    unlockRepositoryFactory?: (input: { userId: string }) => AgentRunRepository
   }
 
   interface FastifyRequest {
