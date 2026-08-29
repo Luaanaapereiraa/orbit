@@ -9,7 +9,8 @@ import { ActiveFocusCard } from './ActiveFocusCard'
 import { DailyPlanView } from './DailyPlanView'
 import { InboxPreview } from './InboxPreview'
 import { QuickCapture } from './QuickCapture'
-import { UnlockTaskDialog } from '../unlock-task/UnlockTaskDialog'
+import { Button } from '../../components/ui/Button'
+import { UnlockTaskDialog } from '../unlock-agent/components/UnlockTaskDialog'
 import { TaskEditor } from './TaskEditor'
 
 export function TodayPage() {
@@ -17,6 +18,7 @@ export function TodayPage() {
   const dateKey = useLocalDateKey(hydrated)
   const [editing, setEditing] = useState<Task | null>(null)
   const [unlocking, setUnlocking] = useState<Task | null>(null)
+  const [unlockOpen, setUnlockOpen] = useState(false)
   const [completionMessage, setCompletionMessage] = useState('')
 
   if (!hydrated || !dateKey) {
@@ -44,6 +46,17 @@ export function TodayPage() {
         <p className="text-sm text-muted dark:text-muted-dark">
           Vamos escolher o que merece sua atenção agora.
         </p>
+        <Button
+          type="button"
+          variant="secondary"
+          className="h-11"
+          onClick={() => {
+            setUnlocking(null)
+            setUnlockOpen(true)
+          }}
+        >
+          Estou travada
+        </Button>
       </header>
 
       <QuickCapture />
@@ -52,7 +65,10 @@ export function TodayPage() {
         <DailyPlanView
           dateKey={dateKey}
           onEdit={setEditing}
-          onUnlock={setUnlocking}
+          onUnlock={(task) => {
+            setUnlocking(task)
+            setUnlockOpen(true)
+          }}
           onCompleted={(title) =>
             setCompletionMessage(
               `Concluída: ${title}. Ela permanece no seu plano de hoje.`,
@@ -63,7 +79,10 @@ export function TodayPage() {
           <InboxPreview
             dateKey={dateKey}
             onEdit={setEditing}
-            onUnlock={setUnlocking}
+            onUnlock={(task) => {
+              setUnlocking(task)
+              setUnlockOpen(true)
+            }}
           />
           <ActiveFocusCard />
         </div>
@@ -74,7 +93,14 @@ export function TodayPage() {
       </p>
 
       <TaskEditor task={editing} onClose={() => setEditing(null)} />
-      <UnlockTaskDialog task={unlocking} onClose={() => setUnlocking(null)} />
+      <UnlockTaskDialog
+        open={unlockOpen}
+        preferredTaskId={unlocking?.id ?? null}
+        onClose={() => {
+          setUnlockOpen(false)
+          setUnlocking(null)
+        }}
+      />
     </div>
   )
 }

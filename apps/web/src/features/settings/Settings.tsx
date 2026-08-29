@@ -1,15 +1,15 @@
 'use client'
 
 import { usePomodoro } from '../../contexts/PomodoroContext'
+import Link from 'next/link'
 import { useAuth } from '../../contexts/AuthContext'
 import { Card } from '../../components/ui/Card'
 import { Toggle } from '../../components/ui/Toggle'
 import { Button } from '../../components/ui/Button'
-import { SignInForm } from '../auth/SignInForm'
 
 export function Settings() {
   const { settings, updateSettings } = usePomodoro()
-  const { status, session, signOut } = useAuth()
+  const { session, user, signOut } = useAuth()
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -19,10 +19,10 @@ export function Settings() {
 
       <Card className="space-y-4">
         <h2 className="font-bold text-ink dark:text-ink-dark">Conta</h2>
-        {status === 'signed-in' && session ? (
+        {session && user ? (
           <div className="space-y-3">
             <p className="text-sm text-muted dark:text-muted-dark">
-              Conectada como {session.email ?? 'conta autenticada'}. O JWT
+              Conectada como {user.email ?? 'conta autenticada'}. O acesso
               autentica o pedido de ajuda; a web não grava planos no Supabase.
             </p>
             <Button
@@ -35,10 +35,18 @@ export function Settings() {
             </Button>
           </div>
         ) : (
-          <SignInForm
-            title="Entre para usar Estou travada"
-            description="A web usa só a chave pública. O segredo da API nunca entra no navegador."
-          />
+          <div className="space-y-3">
+            <p className="text-sm text-muted dark:text-muted-dark">
+              Entre para usar Estou travada. O planner continua local, sem
+              login.
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex h-11 items-center text-sm font-bold text-brand-strong focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+            >
+              Ir para o acesso
+            </Link>
+          </div>
         )}
       </Card>
 

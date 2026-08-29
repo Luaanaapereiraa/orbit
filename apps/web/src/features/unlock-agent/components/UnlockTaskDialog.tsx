@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { applyUnlockPlanToTaskAction } from '@destravai/core'
 import { Button } from '../../../components/ui/Button'
 import { Dialog } from '../../../components/ui/Dialog'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -120,15 +119,12 @@ export function UnlockTaskDialog({
     if (!selectedTask || !response) {
       return
     }
-    applyUnlockPlan(
-      applyUnlockPlanToTaskAction({
-        taskId: selectedTask.id,
-        nextAction: response.plan.nextAction,
-        estimatedMinutes: response.plan.totalMinutes,
-        energy: response.plan.energy,
-        now: new Date().toISOString(),
-      }),
-    )
+    applyUnlockPlan({
+      taskId: selectedTask.id,
+      nextAction: response.plan.nextAction,
+      estimatedMinutes: response.plan.totalMinutes,
+      energy: response.plan.energy,
+    })
     agent.markApplied()
     setJustApplied(true)
   }

@@ -7,7 +7,7 @@ import { usePomodoro } from '../../contexts/PomodoroContext'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ProgressRing } from './ProgressRing'
-import { UnlockTaskDialog } from '../unlock-task/UnlockTaskDialog'
+import { UnlockTaskDialog } from '../unlock-agent/components/UnlockTaskDialog'
 import { TaskPanel } from './TaskPanel'
 
 const typeLabels: Record<CycleType, string> = {
@@ -129,7 +129,11 @@ export function Home() {
       </Card>
 
       <TaskPanel onUnlock={setUnlocking} />
-      <UnlockTaskDialog task={unlocking} onClose={() => setUnlocking(null)} />
+      <UnlockTaskDialog
+        open={!!unlocking}
+        preferredTaskId={unlocking?.id ?? null}
+        onClose={() => setUnlocking(null)}
+      />
     </div>
   )
 }

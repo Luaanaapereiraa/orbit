@@ -189,7 +189,7 @@ export function useUnlockTaskAgent(input: {
         }
         dispatch({ type: 'rejected', response })
       } catch (caught) {
-        if (controller.signal.aborted && state.status === 'submitting') {
+        if (controller.signal.aborted) {
           dispatch({ type: 'backToForm', newRequestId: false })
           return
         }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono as JetBrainsMono } from 'next/font/google'
 import type { ReactNode } from 'react'
+import { AuthProvider } from '../contexts/AuthContext'
 import { PomodoroProvider } from '../contexts/PomodoroContext'
 import { PwaRegister } from '../components/PwaRegister'
 import { APP_DESCRIPTION, APP_NAME } from '../lib/brand'
@@ -50,7 +51,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="font-sans">
         <PwaRegister>
-          <PomodoroProvider>{children}</PomodoroProvider>
+          <PomodoroProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </PomodoroProvider>
         </PwaRegister>
       </body>
     </html>

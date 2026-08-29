@@ -425,6 +425,23 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
     [],
   )
 
+  const applyUnlockPlan = useCallback(
+    (input: {
+      taskId: string
+      nextAction: string
+      estimatedMinutes: number
+      energy: TaskEnergy
+    }) => {
+      dispatch(
+        applyUnlockPlanToTaskAction({
+          ...input,
+          now: nowIso(),
+        }),
+      )
+    },
+    [],
+  )
+
   const moveTaskToActive = useCallback((taskId: string) => {
     dispatch(moveTaskToActiveAction(taskId, nowIso()))
   }, [])
@@ -487,6 +504,7 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
       updateTaskNextAction,
       updateTaskEnergy,
       updateTaskEstimatedMinutes,
+      applyUnlockPlan,
       moveTaskToActive,
       setDailyPlanEssential,
       addDailyPlanSecondary,
@@ -521,6 +539,7 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
       updateTaskNextAction,
       updateTaskEnergy,
       updateTaskEstimatedMinutes,
+      applyUnlockPlan,
       moveTaskToActive,
       setDailyPlanEssential,
       addDailyPlanSecondary,
