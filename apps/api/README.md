@@ -41,7 +41,7 @@ Authorization: Bearer <supabase-access-token>
 
 A web usa apenas a chave **pública** (publishable). O JWT identifica o usuário. A API valida esse JWT via JWKS e deriva `userId` de `sub`.
 
-As RPCs SQL (`start_unlock_agent_run`, `save_unlock_agent_plan`, `begin_unlock_fallback`, `finish_unlock_agent_run`) **não** são API pública. `anon`, `authenticated` e `PUBLIC` não têm `EXECUTE`. Um papel interno `destravai_agent_api` (NOLOGIN) recebe o execute mínimo; o segredo hospedado do projeto herda esse papel.
+As RPCs SQL (`start_unlock_agent_run`, `save_unlock_agent_plan`, `begin_unlock_fallback`, `finish_unlock_agent_run`) **não** são API pública. `anon`, `authenticated` e `PUBLIC` não têm `EXECUTE`. Só o papel do segredo hospedado (`service_role`) recebe `EXECUTE`. A migration não cria role customizada nem altera membership de papéis reservados.
 
 Somente `apps/api` possui a credencial de persistência:
 
@@ -90,8 +90,8 @@ Copie `.env.example` para `.env`. `process.env` só é lido em `loadConfig` (e n
 | `OPENAI_API_KEY` | Obrigatória em produção. Passada ao SDK via config, não pelo browser. |
 | `OPENAI_MODEL` | Obrigatória fora de testes. Nenhum nome de modelo fica hardcoded. |
 | `OPENAI_AGENT_PROMPT_VERSION` | Padrão `unlock-v1`. |
-| `OPENAI_AGENT_TRACING_ENABLED` | Tracing do workflow `destravai.unlock-task.v1`. |
-| `OPENAI_TRACE_INCLUDE_SENSITIVE_DATA` | Deve ser `false` em produção. |
+| `OPENAI_AGENT_TRACING_ENABLED` | Tracing do workflow `destravai.unlock-task.v1`. **Desligado** por padrão. Em produção só liga com `true` explícito. |
+| `OPENAI_TRACE_INCLUDE_SENSITIVE_DATA` | Deve permanecer `false`. Produção recusa `true`. |
 | `AGENT_TIMEOUT_MS` | Padrão `20000`. |
 | `AGENT_MAX_TURNS` | Padrão `8`. |
 | `AGENT_DAILY_LIMIT` | Usado pelo repositório em memória e como documentação do padrão. Em Supabase o limite vem de `agent_quota_settings.daily_limit` (inicial 5). |
@@ -112,7 +112,7 @@ Zod: `@destravai/api` e `@destravai/contracts` devem resolver **Zod 3.25.76** (`
 - Saída médica, diagnóstico, prescrição ou alegação terapêutica é rejeitada.
 - Logs correlacionam `requestId`, `runId`, status, latência, modo de geração e código de erro sanitizado. Não registram Authorization, body, título da tarefa, prompt ou payload bruto de ferramenta.
 - `agent_runs` guarda metadados (status, motivo categórico, versão de prompt, modelo, tokens, latência, payload da **resposta** para replay). Não guarda header Authorization, JWT, e-mail, prompt completo, body bruto nem título bruto da tarefa.
-- Tracing sem dados sensíveis. Metadata do trace: `runId` e `promptVersion`.
+- Tracing desligado por padrão. Só liga com `OPENAI_AGENT_TRACING_ENABLED=true`. Dados sensíveis (inputs/outputs de tools) permanecem desligados; produção recusa `OPENAI_TRACE_INCLUDE_SENSITIVE_DATA=true`. Metadata do trace, se opt-in: `runId` e `promptVersion`.
 
 ## Idempotência
 
@@ -233,7 +233,7 @@ curl -sS http://localhost:3333/v1/agents/unlock-task/runs \
 - Repositório em memória não serve produção.
 - Rate limit por IP é in-memory (uma instância).
 - Lease expirada: `running` continua `running`; `fallback_pending` continua `fallback_pending`; terminal não reabre. Sem cota extra.
-- RLS e grants corretivos precisam ser validados num projeto Supabase real (os testes comuns cobrem SQL + memória). Checklist: aplicar a sequência de migrations; `authenticated`/`anon`/`PUBLIC` sem `EXECUTE` nas RPCs; papel `destravai_agent_api` + segredo hospedado com execute; helpers sem execute público; `fallback_pending` não volta a `running`.
+- RLS e grants corretivos precisam ser validados num projeto Supabase real (os testes comuns cobrem SQL + memória). Checklist: aplicar a sequência de migrations; `authenticated`/`anon`/`PUBLIC` sem `EXECUTE` nas RPCs; só `service_role` com execute; helpers sem execute público; `fallback_pending` não volta a `running`.
 
 ## Comandos
 

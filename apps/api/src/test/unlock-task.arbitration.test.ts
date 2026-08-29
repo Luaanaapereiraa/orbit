@@ -209,7 +209,7 @@ describe('unlock-task arbitration, lease, errors and OpenAPI', () => {
       runId: started.run.id,
       userId: USER_ID,
     })
-    expect(timeout.kind).toBe('timeout_won')
+    expect(timeout.kind).toBe('fallback_claimed')
     const late = await repository.savePlan({
       runId: started.run.id,
       userId: USER_ID,
@@ -353,7 +353,7 @@ describe('unlock-task arbitration, lease, errors and OpenAPI', () => {
       runId: first.run.id,
       userId: USER_ID,
     })
-    expect(claimed.kind).toBe('timeout_won')
+    expect(claimed.kind).toBe('fallback_claimed')
     repository.expireLease(USER_ID, input.clientRequestId)
     const recovered = await repository.startRun(input)
     expect(recovered.kind).toBe('created')

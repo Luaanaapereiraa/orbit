@@ -44,7 +44,7 @@ export type SaveUnlockPlanResult =
   | { kind: 'rejected'; reason: 'not_running' | 'not_fallback_pending' }
 
 export type BeginFallbackResult =
-  | { kind: 'timeout_won'; run: AgentRunRecord }
+  | { kind: 'fallback_claimed'; run: AgentRunRecord }
   | {
       kind: 'persisted_plan_won'
       run: AgentRunRecord

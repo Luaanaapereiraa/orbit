@@ -2,14 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { UNLOCK_EVAL_CASES } from '../agents/unlock-task/evals/cases.js'
-import { metricsPassed, scoreUnlockPlan } from '../agents/unlock-task/evals/metrics.js'
-import { buildFallbackPlan } from '../agents/unlock-task/fallback.js'
-import { collectModerationText, PatternModerator } from '../agents/unlock-task/guardrails/input.js'
+import { runOfflineUnlockEvals } from '../agents/unlock-task/evals/offline.js'
 import { MemoryAgentRunRepository } from '../agents/unlock-task/repositories/memory.js'
 import { createUnlockRunContext } from '../agents/unlock-task/context.js'
-import { readTrustedTaskContext } from '../agents/unlock-task/tools/get-task-context.js'
-import { applyValidatedPlan } from '../agents/unlock-task/tools/validate-unlock-plan.js'
-import { saveValidatedUnlockPlan } from '../agents/unlock-task/tools/save-unlock-plan.js'
 import { unlockRunOptions } from '../agents/unlock-task/runner.js'
 import { testConfig, validUnlockRequest } from './helpers.js'
 
@@ -18,48 +13,14 @@ describe('unlock-task evals and source guards', () => {
     expect(UNLOCK_EVAL_CASES.length).toBeGreaterThanOrEqual(20)
   })
 
-  it('passes deterministic offline eval metrics', async () => {
-    const moderator = new PatternModerator()
-    for (const evalCase of UNLOCK_EVAL_CASES) {
-      const blocked = (
-        await moderator.inspect(
-          collectModerationText({
-            title: evalCase.request.task.title,
-            nextAction: evalCase.request.task.nextAction,
-            blockageDetails: evalCase.request.blockageDetails,
-          }),
-        )
-      ).blocked
-      if (evalCase.expect.unsafe) {
-        expect(blocked).toBe(true)
-        continue
+  it('passes deterministic offline evals through the unlock service', async () => {
+    const report = await runOfflineUnlockEvals()
+    expect(report.total).toBeGreaterThanOrEqual(20)
+    expect(report.passed).toBe(report.total)
+    for (const result of report.results) {
+      if ('generationMode' in result) {
+        expect(result.generationMode).toBe('agent')
       }
-      const repository = new MemoryAgentRunRepository()
-      const started = await repository.startRun({
-        userId: 'eval-user',
-        clientRequestId: evalCase.request.clientRequestId,
-        blockageReason: evalCase.request.blockageReason,
-        promptVersion: 'unlock-v1',
-        dailyLimit: 50,
-      })
-      if (started.kind !== 'created') {
-        throw new Error(started.kind)
-      }
-      const context = createUnlockRunContext({
-        runId: started.run.id,
-        userId: 'eval-user',
-        request: evalCase.request,
-        repository,
-      })
-      readTrustedTaskContext(context)
-      const plan = buildFallbackPlan(evalCase.request)
-      applyValidatedPlan(context, plan)
-      await saveValidatedUnlockPlan(context, plan)
-      const metrics = scoreUnlockPlan(plan, evalCase.request, {
-        protocolComplete: true,
-        language: evalCase.expect.language,
-      })
-      expect(metricsPassed(metrics)).toBe(true)
     }
   })
 

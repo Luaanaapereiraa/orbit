@@ -67,6 +67,24 @@ describe('loadConfig', () => {
     ).toThrow(ConfigError)
   })
 
+  it('keeps tracing off unless explicitly enabled', () => {
+    expect(loadConfig(baseEnv).openaiAgentTracingEnabled).toBe(false)
+    expect(
+      loadConfig({ ...baseEnv, OPENAI_AGENT_TRACING_ENABLED: '' })
+        .openaiAgentTracingEnabled,
+    ).toBe(false)
+    expect(
+      loadConfig({ ...baseEnv, NODE_ENV: 'production' }).openaiAgentTracingEnabled,
+    ).toBe(false)
+    expect(
+      loadConfig({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        OPENAI_AGENT_TRACING_ENABLED: 'true',
+      }).openaiAgentTracingEnabled,
+    ).toBe(true)
+  })
+
   it('requires a server-only secret when the agent repository is supabase', () => {
     expect(() =>
       loadConfig({

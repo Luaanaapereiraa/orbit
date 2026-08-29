@@ -276,7 +276,7 @@ export class MemoryAgentRunRepository implements AgentRunRepository {
         updatedAt: this.clock().toISOString(),
       }
       this.runs.set(this.key(current.userId, current.clientRequestId), next)
-      return { kind: 'timeout_won', run: next }
+      return { kind: 'fallback_claimed', run: next }
     }
 
     return { kind: 'incompatible', run: current }

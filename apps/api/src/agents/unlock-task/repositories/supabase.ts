@@ -215,8 +215,8 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
     }
     const plan = planFromRpc(payload.plan ?? null)
 
-    if (payload.kind === 'timeout_won') {
-      return { kind: 'timeout_won', run }
+    if (payload.kind === 'fallback_claimed' || payload.kind === 'timeout_won') {
+      return { kind: 'fallback_claimed', run }
     }
     if (payload.kind === 'persisted_plan_won' && plan) {
       const generationMode = generationModeFrom(

@@ -317,7 +317,7 @@ export class UnlockTaskService {
       }
     }
 
-    if (arbitration.kind !== 'timeout_won') {
+    if (arbitration.kind !== 'fallback_claimed') {
       throw AppError.badGateway()
     }
 

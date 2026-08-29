@@ -89,7 +89,7 @@ const EnvSchema = z.object({
   OPENAI_MODEL: z.string().optional().default(''),
   OPENAI_AGENT_PROMPT_VERSION: z.string().min(1).default('unlock-v1'),
   OPENAI_AGENT_TRACING_ENABLED: z.preprocess(
-    (value) => (value === undefined || value === '' ? 'true' : value),
+    (value) => (value === undefined || value === '' ? 'false' : value),
     booleanish,
   ),
   OPENAI_TRACE_INCLUDE_SENSITIVE_DATA: z.preprocess(

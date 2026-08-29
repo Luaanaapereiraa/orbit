@@ -1,7 +1,12 @@
 -- Close agent RPCs to PostgREST user JWTs.
 -- Identity: API validates the user JWT (JWKS) and passes p_user_id.
--- Authority: only the dedicated backend role (and hosted secret role that inherits it)
--- may EXECUTE these functions. anon / authenticated / PUBLIC must not.
+-- Authority: only the hosted secret role (service_role) may EXECUTE these
+-- functions. anon / authenticated / PUBLIC must not.
+--
+-- Do not invent a custom database role or change reserved-role membership.
+-- Hosted migrations may lack that privilege; a failed statement would roll back
+-- the revoke of authenticated EXECUTE. The API secret already authenticates as
+-- service_role.
 --
 -- Hosted Supabase authenticates the dashboard "secret" as the built-in role that
 -- bypasses RLS. Queries still filter by p_user_id. Do not put that secret in the
@@ -9,19 +14,6 @@
 --
 -- Static tests read this file. Definitive proof is the live Postgres catalog
 -- after applying the full migration sequence.
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'destravai_agent_api') THEN
-    CREATE ROLE destravai_agent_api
-      NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION;
-  END IF;
-END
-$$;
-
-GRANT USAGE ON SCHEMA public TO destravai_agent_api;
-
-GRANT destravai_agent_api TO service_role;
 
 DROP FUNCTION IF EXISTS public.start_unlock_agent_run(uuid, text, text);
 DROP FUNCTION IF EXISTS public.save_unlock_agent_plan(uuid, jsonb, text);
@@ -52,7 +44,7 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.require_agent_api_user(uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.require_agent_api_user(uuid) FROM anon, authenticated;
+REVOKE ALL ON FUNCTION public.require_agent_api_user(uuid) FROM anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.require_authenticated_uid() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.require_authenticated_uid() FROM anon, authenticated;
 
@@ -310,7 +302,7 @@ BEGIN
       AND user_id = caller
     RETURNING * INTO current_run;
 
-    RETURN jsonb_build_object('kind', 'timeout_won', 'run', to_jsonb(current_run));
+    RETURN jsonb_build_object('kind', 'fallback_claimed', 'run', to_jsonb(current_run));
   END IF;
 
   RETURN jsonb_build_object('kind', 'incompatible', 'run', to_jsonb(current_run));
@@ -412,22 +404,18 @@ $$;
 
 REVOKE ALL ON FUNCTION public.start_unlock_agent_run(uuid, uuid, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.start_unlock_agent_run(uuid, uuid, text, text) FROM anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.start_unlock_agent_run(uuid, uuid, text, text) TO destravai_agent_api;
 GRANT EXECUTE ON FUNCTION public.start_unlock_agent_run(uuid, uuid, text, text) TO service_role;
 
 REVOKE ALL ON FUNCTION public.save_unlock_agent_plan(uuid, uuid, jsonb, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.save_unlock_agent_plan(uuid, uuid, jsonb, text) FROM anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.save_unlock_agent_plan(uuid, uuid, jsonb, text) TO destravai_agent_api;
 GRANT EXECUTE ON FUNCTION public.save_unlock_agent_plan(uuid, uuid, jsonb, text) TO service_role;
 
 REVOKE ALL ON FUNCTION public.begin_unlock_fallback(uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.begin_unlock_fallback(uuid, uuid) FROM anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.begin_unlock_fallback(uuid, uuid) TO destravai_agent_api;
 GRANT EXECUTE ON FUNCTION public.begin_unlock_fallback(uuid, uuid) TO service_role;
 
 REVOKE ALL ON FUNCTION public.finish_unlock_agent_run(uuid, uuid, text, text, jsonb, text, text, integer, integer, integer, integer, text, jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.finish_unlock_agent_run(uuid, uuid, text, text, jsonb, text, text, integer, integer, integer, integer, text, jsonb) FROM anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.finish_unlock_agent_run(uuid, uuid, text, text, jsonb, text, text, integer, integer, integer, integer, text, jsonb) TO destravai_agent_api;
 GRANT EXECUTE ON FUNCTION public.finish_unlock_agent_run(uuid, uuid, text, text, jsonb, text, text, integer, integer, integer, integer, text, jsonb) TO service_role;
 
 REVOKE ALL ON FUNCTION public.insert_unlock_plan_locked(public.agent_runs, jsonb) FROM PUBLIC;
@@ -440,9 +428,8 @@ REVOKE ALL ON FUNCTION public.agent_run_lease_interval() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.agent_run_lease_interval() FROM anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.require_authenticated_uid() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.require_authenticated_uid() FROM anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.require_agent_api_user(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.require_agent_api_user(uuid) FROM anon, authenticated, service_role;
 
 COMMENT ON FUNCTION public.start_unlock_agent_run(uuid, uuid, text, text) IS
   'Internal API RPC. p_user_id is the JWKS-authenticated user. Not executable by anon or authenticated.';
-
-COMMENT ON ROLE destravai_agent_api IS
-  'NOLOGIN backend role for unlock-task RPCs. Inherited by the hosted secret role. Not a browser credential.';

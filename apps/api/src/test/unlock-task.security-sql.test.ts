@@ -16,10 +16,6 @@ function readLatest() {
   return readFileSync(MIGRATIONS[MIGRATIONS.length - 1], 'utf8')
 }
 
-function readAll() {
-  return MIGRATIONS.map((file) => readFileSync(file, 'utf8')).join('\n')
-}
-
 function walkSourceFiles(dir: string, files: string[] = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules' || entry.name === '.next' || entry.name === 'dist') {
@@ -43,7 +39,8 @@ describe('unlock-task SQL security migration', () => {
     expect(sql).not.toMatch(/p_daily_limit/)
     expect(sql).toMatch(/p_user_id/)
     expect(sql).toMatch(/require_agent_api_user/)
-    expect(sql).toMatch(/destravai_agent_api/)
+    expect(sql).not.toMatch(/CREATE ROLE\s+\w+/)
+    expect(sql).not.toMatch(/destravai_agent_api/)
   })
 
   it('revokes execute on agent RPCs from PUBLIC, anon and authenticated', () => {
@@ -68,23 +65,21 @@ describe('unlock-task SQL security migration', () => {
     expect(sql).not.toMatch(/GRANT EXECUTE[^\n]*TO PUBLIC/)
   })
 
-  it('grants execute only to the backend role and hosted secret role', () => {
+  it('grants execute only to the hosted secret role', () => {
     const sql = readLatest()
-    expect(sql).toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.start_unlock_agent_run\(uuid, uuid, text, text\) TO destravai_agent_api/,
-    )
     expect(sql).toMatch(
       /GRANT EXECUTE ON FUNCTION public\.start_unlock_agent_run\(uuid, uuid, text, text\) TO service_role/,
     )
     expect(sql).toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.save_unlock_agent_plan\(uuid, uuid, jsonb, text\) TO destravai_agent_api/,
+      /GRANT EXECUTE ON FUNCTION public\.save_unlock_agent_plan\(uuid, uuid, jsonb, text\) TO service_role/,
     )
     expect(sql).toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.begin_unlock_fallback\(uuid, uuid\) TO destravai_agent_api/,
+      /GRANT EXECUTE ON FUNCTION public\.begin_unlock_fallback\(uuid, uuid\) TO service_role/,
     )
     expect(sql).toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.finish_unlock_agent_run\(uuid, uuid, text, text, jsonb, text, text, integer, integer, integer, integer, text, jsonb\) TO destravai_agent_api/,
+      /GRANT EXECUTE ON FUNCTION public\.finish_unlock_agent_run\(uuid, uuid, text, text, jsonb, text, text, integer, integer, integer, integer, text, jsonb\) TO service_role/,
     )
+    expect(sql).not.toMatch(/GRANT EXECUTE[^\n]*TO destravai_agent_api/)
   })
 
   it('drops previous public signatures and keeps helpers off the user surface', () => {
@@ -96,7 +91,7 @@ describe('unlock-task SQL security migration', () => {
       /REVOKE ALL ON FUNCTION public\.insert_unlock_plan_locked\(public\.agent_runs, jsonb\) FROM anon, authenticated, service_role/,
     )
     expect(sql).toMatch(
-      /REVOKE ALL ON FUNCTION public\.require_agent_api_user\(uuid\) FROM anon, authenticated/,
+      /REVOKE ALL ON FUNCTION public\.require_agent_api_user\(uuid\) FROM anon, authenticated, service_role/,
     )
   })
 
@@ -104,7 +99,9 @@ describe('unlock-task SQL security migration', () => {
     const sql = readLatest()
     expect(sql).toMatch(/SET status = 'fallback_pending'/)
     expect(sql).toMatch(/kind', 'persisted_plan_won'/)
+    expect(sql).toMatch(/kind', 'fallback_claimed'/)
     expect(sql).not.toMatch(/agent_won/)
+    expect(sql).not.toMatch(/timeout_won/)
     expect(sql).toMatch(/AND user_id = caller/)
   })
 
@@ -140,5 +137,6 @@ describe('unlock-task credential surface', () => {
     const example = readFileSync(resolve(process.cwd(), '.env.example'), 'utf8')
     expect(example).toMatch(/^SUPABASE_SECRET_KEY=$/m)
     expect(example).not.toMatch(/NEXT_PUBLIC_SUPABASE_SECRET/)
+    expect(example).toMatch(/^OPENAI_AGENT_TRACING_ENABLED=false$/m)
   })
 })
