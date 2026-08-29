@@ -33,6 +33,7 @@ export function UnlockTaskClarification({
       <label className="block space-y-1">
         <span className="text-sm font-medium">Sua resposta</span>
         <textarea
+          data-initial-focus=""
           value={answer}
           required
           maxLength={BLOCKAGE_DETAILS_MAX_LENGTH}

@@ -12,11 +12,17 @@ export type UnlockAgentErrorCode =
   | 'invalid_response'
   | 'unknown'
 
+export type UnlockAgentErrorDetail = {
+  path: string
+  message: string
+}
+
 export class UnlockAgentError extends Error {
   readonly code: UnlockAgentErrorCode
   readonly status: number | null
   readonly retryable: boolean
   readonly sameRequest: boolean
+  readonly details: UnlockAgentErrorDetail[]
 
   constructor(
     code: UnlockAgentErrorCode,
@@ -25,6 +31,7 @@ export class UnlockAgentError extends Error {
       status?: number | null
       retryable?: boolean
       sameRequest?: boolean
+      details?: UnlockAgentErrorDetail[]
     },
   ) {
     super(message)
@@ -33,6 +40,7 @@ export class UnlockAgentError extends Error {
     this.status = options?.status ?? null
     this.retryable = options?.retryable ?? false
     this.sameRequest = options?.sameRequest ?? false
+    this.details = options?.details ?? []
   }
 }
 
@@ -114,6 +122,7 @@ export function unlockAgentErrorFromResponse(
       status,
       retryable: mapped.retryable,
       sameRequest: mapped.sameRequest,
+      details: parsed.success ? parsed.data.error.details : undefined,
     })
   }
 

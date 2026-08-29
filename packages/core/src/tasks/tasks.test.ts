@@ -94,12 +94,18 @@ describe('applyUnlockPlanToTask', () => {
       title: 'Escrever o parágrafo',
       nextAction: null,
     })
-    const next = applyUnlockPlanToTask([inbox], {
+    const tasks = [inbox]
+    const result = applyUnlockPlanToTask(tasks, {
       taskId: inbox.id,
       ...plan,
     })
 
-    expect(next[0]).toMatchObject({
+    expect(result.status).toBe('applied')
+    if (result.status !== 'applied') {
+      return
+    }
+    expect(result.tasks).not.toBe(tasks)
+    expect(result.task).toMatchObject({
       title: 'Escrever o parágrafo',
       status: 'inbox',
       nextAction: 'Abrir o arquivo',
@@ -108,9 +114,30 @@ describe('applyUnlockPlanToTask', () => {
       updatedAt: LATER,
       completedAt: null,
     })
+    expect(result.tasks[0]).toBe(result.task)
   })
 
-  it('rejects missing, done or archived tasks', () => {
+  it('returns the same array when the plan is already applied', () => {
+    const task = makeTask({
+      nextAction: 'Abrir o arquivo',
+      estimatedMinutes: 20,
+      energy: 'medium',
+    })
+    const tasks = [task]
+    const result = applyUnlockPlanToTask(tasks, {
+      taskId: task.id,
+      ...plan,
+    })
+
+    expect(result).toEqual({
+      status: 'applied',
+      tasks,
+      task,
+    })
+    expect(result.status === 'applied' && result.tasks).toBe(tasks)
+  })
+
+  it('rejects missing, done or archived tasks with an explicit status', () => {
     const active = makeTask({ id: 'active-1' })
     const done = makeTask({
       id: 'done-1',
@@ -120,39 +147,76 @@ describe('applyUnlockPlanToTask', () => {
     const archived = makeTask({ id: 'arch-1', status: 'archived' })
     const tasks = [active, done, archived]
 
-    expect(
-      applyUnlockPlanToTask(tasks, { taskId: 'missing', ...plan }),
-    ).toBe(tasks)
-    expect(
-      applyUnlockPlanToTask(tasks, { taskId: done.id, ...plan }),
-    ).toBe(tasks)
-    expect(
-      applyUnlockPlanToTask(tasks, { taskId: archived.id, ...plan }),
-    ).toBe(tasks)
+    const missing = applyUnlockPlanToTask(tasks, {
+      taskId: 'missing',
+      ...plan,
+    })
+    const rejectedDone = applyUnlockPlanToTask(tasks, {
+      taskId: done.id,
+      ...plan,
+    })
+    const rejectedArchived = applyUnlockPlanToTask(tasks, {
+      taskId: archived.id,
+      ...plan,
+    })
+
+    expect(missing).toEqual({ status: 'task_not_found', tasks })
+    expect(missing.tasks).toBe(tasks)
+    expect(rejectedDone).toEqual({ status: 'task_not_eligible', tasks })
+    expect(rejectedDone.tasks).toBe(tasks)
+    expect(rejectedArchived).toEqual({ status: 'task_not_eligible', tasks })
+    expect(rejectedArchived.tasks).toBe(tasks)
+    expect(active.nextAction).toBe(active.nextAction)
+  })
+
+  it('applies only to the requested id when another task has the same title', () => {
+    const first = makeTask({
+      id: 'task-a',
+      title: 'Escrever o parágrafo',
+    })
+    const second = makeTask({
+      id: 'task-b',
+      title: 'Escrever o parágrafo',
+    })
+    const tasks = [first, second]
+    const result = applyUnlockPlanToTask(tasks, {
+      taskId: first.id,
+      ...plan,
+    })
+
+    expect(result.status).toBe('applied')
+    if (result.status !== 'applied') {
+      return
+    }
+    expect(result.task.id).toBe('task-a')
+    expect(result.tasks[0].nextAction).toBe('Abrir o arquivo')
+    expect(result.tasks[1]).toBe(second)
+    expect(result.tasks[1].nextAction).toBe(second.nextAction)
   })
 
   it('rejects an empty next action or invalid estimate', () => {
     const task = makeTask()
     const tasks = [task]
 
-    expect(
-      applyUnlockPlanToTask(tasks, {
-        taskId: task.id,
-        nextAction: '   ',
-        estimatedMinutes: 20,
-        energy: 'low',
-        now: LATER,
-      }),
-    ).toBe(tasks)
-    expect(
-      applyUnlockPlanToTask(tasks, {
-        taskId: task.id,
-        nextAction: 'Começar',
-        estimatedMinutes: 0,
-        energy: 'low',
-        now: LATER,
-      }),
-    ).toBe(tasks)
+    const emptyAction = applyUnlockPlanToTask(tasks, {
+      taskId: task.id,
+      nextAction: '   ',
+      estimatedMinutes: 20,
+      energy: 'low',
+      now: LATER,
+    })
+    const invalidEstimate = applyUnlockPlanToTask(tasks, {
+      taskId: task.id,
+      nextAction: 'Começar',
+      estimatedMinutes: 0,
+      energy: 'low',
+      now: LATER,
+    })
+
+    expect(emptyAction).toEqual({ status: 'task_not_eligible', tasks })
+    expect(emptyAction.tasks).toBe(tasks)
+    expect(invalidEstimate).toEqual({ status: 'task_not_eligible', tasks })
+    expect(invalidEstimate.tasks).toBe(tasks)
   })
 })
 

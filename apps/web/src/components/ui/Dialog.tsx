@@ -12,6 +12,7 @@ interface DialogProps {
   footer?: ReactNode
   className?: string
   initialFocusRef?: RefObject<{ focus: () => void } | null>
+  focusKey?: string
 }
 
 export function Dialog({
@@ -23,6 +24,7 @@ export function Dialog({
   footer,
   className,
   initialFocusRef,
+  focusKey,
 }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
@@ -52,17 +54,32 @@ export function Dialog({
       node.setAttribute('open', '')
     }
 
-    const focusTarget = initialFocusRef?.current ?? node
-    focusTarget.focus()
+    function focusUsefulControl() {
+      const marked = node.querySelector<HTMLElement>('[data-initial-focus]')
+      const body = node.querySelector<HTMLElement>('[data-dialog-body]')
+      const firstUseful =
+        marked ??
+        body?.querySelector<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        )
+      const focusTarget = initialFocusRef?.current ?? firstUseful
+      if (focusTarget) {
+        focusTarget.focus()
+      }
+    }
+
+    focusUsefulControl()
+    const frame = window.requestAnimationFrame(focusUsefulControl)
 
     return () => {
+      window.cancelAnimationFrame(frame)
       if (typeof node.close === 'function' && node.open) {
         node.close()
       }
 
       previous?.focus?.()
     }
-  }, [initialFocusRef, open])
+  }, [focusKey, initialFocusRef, open])
 
   if (!open) {
     return null
@@ -79,6 +96,12 @@ export function Dialog({
       onCancel={(event) => {
         event.preventDefault()
         onClose()
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          onClose()
+        }
       }}
       className={cn(
         'm-auto w-[min(36rem,calc(100vw-2rem))] rounded-2xl border border-line bg-panel p-0 text-ink shadow-xl backdrop:bg-ink/40 dark:border-line-dark dark:bg-panel-dark dark:text-ink-dark',
@@ -109,7 +132,10 @@ export function Dialog({
           ×
         </button>
       </div>
-      <div className="max-h-[min(70vh,36rem)] overflow-y-auto overflow-x-hidden px-5 py-4">
+      <div
+        data-dialog-body
+        className="max-h-[min(70vh,36rem)] overflow-y-auto overflow-x-hidden px-5 py-4"
+      >
         {children}
       </div>
       {footer ? (

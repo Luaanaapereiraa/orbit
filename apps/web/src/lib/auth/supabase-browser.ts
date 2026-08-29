@@ -1,13 +1,10 @@
-import { createBrowserClient } from '@supabase/ssr'
 import type {
   Session as SupabaseSession,
   SupabaseClient,
 } from '@supabase/supabase-js'
-import {
-  isPublicAuthConfigured,
-  readPublicSupabasePublishableKey,
-  readPublicSupabaseUrl,
-} from '../public-env'
+import { createSupabaseBrowserClient as createBrowserSupabase } from '../supabase/client'
+import { isPublicAuthConfigured } from '../public-env'
+import { createAccessTokenReader } from './access-token'
 import type { AuthClient, Session } from './types'
 
 function sessionFrom(session: SupabaseSession | null): Session | null {
@@ -24,20 +21,41 @@ function sessionFrom(session: SupabaseSession | null): Session | null {
   }
 }
 
+function tokenSessionFrom(session: SupabaseSession | null) {
+  if (!session?.access_token) {
+    return null
+  }
+  return {
+    accessToken: session.access_token,
+    expiresAt: session.expires_at ?? null,
+  }
+}
+
 export function createSupabaseBrowserClient(): AuthClient | null {
   if (!isPublicAuthConfigured()) {
     return null
   }
 
-  const createClient = createBrowserClient as unknown as (
-    url: string,
-    key: string,
-  ) => SupabaseClient
-
-  const client = createClient(
-    readPublicSupabaseUrl(),
-    readPublicSupabasePublishableKey(),
-  )
+  const client = createBrowserSupabase() as SupabaseClient
+  const tokenReader = createAccessTokenReader({
+    async getSession() {
+      const { data, error } = await client.auth.getSession()
+      if (error) {
+        return null
+      }
+      return tokenSessionFrom(data.session)
+    },
+    async refreshSession() {
+      const { data, error } = await client.auth.refreshSession()
+      if (error) {
+        return null
+      }
+      return tokenSessionFrom(data.session)
+    },
+    async clearSession() {
+      await client.auth.signOut()
+    },
+  })
 
   return {
     async getSession() {
@@ -64,14 +82,14 @@ export function createSupabaseBrowserClient(): AuthClient | null {
       }
     },
     async signOut() {
+      tokenReader.invalidate()
       const { error } = await client.auth.signOut()
       if (error) {
         throw new Error('Não foi possível sair.')
       }
     },
-    async getAccessToken() {
-      const { data } = await client.auth.getSession()
-      return data.session?.access_token ?? null
+    getAccessToken() {
+      return tokenReader.getAccessToken()
     },
     onAuthStateChange(listener) {
       const { data } = client.auth.onAuthStateChange((_event, session) => {

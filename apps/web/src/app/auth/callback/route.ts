@@ -1,8 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
-import { safeNextPath } from '../../../lib/auth/safe-next'
+import { NextResponse, type NextRequest } from 'next/server'
 import {
   isPublicAuthConfigured,
   readPublicSupabasePublishableKey,
@@ -11,44 +8,38 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: Request) {
-  const url = new URL(request.url)
-  const next = safeNextPath(url.searchParams.get('next'))
-  const code = url.searchParams.get('code')
+const NO_STORE = { 'Cache-Control': 'no-store' }
 
-  if (!isPublicAuthConfigured() || !code) {
-    return NextResponse.redirect(new URL('/login?error=callback', url.origin))
+function callbackRedirect(request: NextRequest, path: '/login?error=callback' | '/') {
+  return NextResponse.redirect(new URL(path, request.url), {
+    headers: NO_STORE,
+  })
+}
+
+export async function GET(request: NextRequest) {
+  if (!isPublicAuthConfigured()) {
+    return callbackRedirect(request, '/login?error=callback')
   }
 
-  const cookieStore = await cookies()
-  const createClient = createServerClient as unknown as (
-    supabaseUrl: string,
-    supabaseKey: string,
-    options: {
-      cookies: {
-        getAll: () => { name: string; value: string }[]
-        setAll: (
-          cookiesToSet: {
-            name: string
-            value: string
-            options?: Record<string, unknown>
-          }[],
-        ) => void
-      }
-    },
-  ) => SupabaseClient
+  const code = request.nextUrl.searchParams.get('code')
+  if (!code) {
+    return callbackRedirect(request, '/login?error=callback')
+  }
 
-  const supabase = createClient(
+  const redirectResponse = callbackRedirect(request, '/')
+
+  const supabase = createServerClient(
     readPublicSupabaseUrl(),
     readPublicSupabasePublishableKey(),
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll()
+          return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options)
+            request.cookies.set(name, value)
+            redirectResponse.cookies.set(name, value, options)
           })
         },
       },
@@ -57,8 +48,8 @@ export async function GET(request: Request) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
-    return NextResponse.redirect(new URL('/login?error=callback', url.origin))
+    return callbackRedirect(request, '/login?error=callback')
   }
 
-  return NextResponse.redirect(new URL(next, url.origin))
+  return redirectResponse
 }

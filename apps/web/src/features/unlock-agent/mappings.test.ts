@@ -4,6 +4,8 @@ import {
   buildUnlockTaskRequest,
   canRequestUnlock,
   createUnlockFormFields,
+  fieldErrorsFromDetails,
+  firstInvalidUnlockField,
   suggestUnlockTask,
 } from './mappings'
 
@@ -91,5 +93,15 @@ describe('unlock-agent mappings', () => {
     expect(request.clientRequestId).toBe('550e8400-e29b-41d4-a716-446655440000')
     expect(request.today.role).toBe('essential')
     expect(request.availableMinutes).toBe(25)
+  })
+
+  it('maps API details to form fields', () => {
+    const errors = fieldErrorsFromDetails([
+      { path: 'blockageDetails', message: 'Detalhe inválido' },
+      { path: 'task.id', message: 'Tarefa inválida' },
+    ])
+    expect(errors.blockageDetails).toBe('Detalhe inválido')
+    expect(errors.taskId).toBe('Tarefa inválida')
+    expect(firstInvalidUnlockField(errors)).toBe('taskId')
   })
 })

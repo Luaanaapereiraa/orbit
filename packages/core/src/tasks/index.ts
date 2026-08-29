@@ -274,6 +274,21 @@ export function updateTaskEnergy(
   )
 }
 
+export type ApplyUnlockPlanResult =
+  | {
+      status: 'applied'
+      tasks: Task[]
+      task: Task
+    }
+  | {
+      status: 'task_not_found'
+      tasks: Task[]
+    }
+  | {
+      status: 'task_not_eligible'
+      tasks: Task[]
+    }
+
 export function applyUnlockPlanToTask(
   tasks: Task[],
   input: {
@@ -283,38 +298,46 @@ export function applyUnlockPlanToTask(
     energy: TaskEnergy
     now: string
   },
-) {
+): ApplyUnlockPlanResult {
+  const existing = tasks.find((task) => task.id === input.taskId)
+
+  if (!existing) {
+    return { status: 'task_not_found', tasks }
+  }
+
   const nextAction = normalizeNextAction(input.nextAction)
 
   if (
     !nextAction ||
     !isValidEstimatedMinutes(input.estimatedMinutes) ||
     input.estimatedMinutes === null ||
-    !isTaskEnergy(input.energy)
+    !isTaskEnergy(input.energy) ||
+    (existing.status !== 'inbox' && existing.status !== 'active')
   ) {
-    return tasks
+    return { status: 'task_not_eligible', tasks }
   }
 
-  return patchTask(tasks, input.taskId, input.now, (task) => {
-    if (task.status !== 'inbox' && task.status !== 'active') {
-      return task
-    }
+  if (
+    existing.nextAction === nextAction &&
+    existing.estimatedMinutes === input.estimatedMinutes &&
+    existing.energy === input.energy
+  ) {
+    return { status: 'applied', tasks, task: existing }
+  }
 
-    if (
-      task.nextAction === nextAction &&
-      task.estimatedMinutes === input.estimatedMinutes &&
-      task.energy === input.energy
-    ) {
-      return task
-    }
+  const next = patchTask(tasks, input.taskId, input.now, (task) => ({
+    ...task,
+    nextAction,
+    estimatedMinutes: input.estimatedMinutes,
+    energy: input.energy,
+  }))
+  const task = next.find((item) => item.id === input.taskId)
 
-    return {
-      ...task,
-      nextAction,
-      estimatedMinutes: input.estimatedMinutes,
-      energy: input.energy,
-    }
-  })
+  if (!task || next === tasks) {
+    return { status: 'task_not_eligible', tasks }
+  }
+
+  return { status: 'applied', tasks: next, task }
 }
 
 export function moveTaskBetweenInboxAndActive(

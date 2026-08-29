@@ -56,9 +56,20 @@ export async function POST(request: Request) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
+  let apiUrl: string
+  try {
+    apiUrl = readDestravaiApiUrl()
+  } catch {
+    return safeError(
+      503,
+      'SERVICE_UNAVAILABLE',
+      'A ajuda está indisponível no momento.',
+    )
+  }
+
   try {
     const upstream = await fetch(
-      `${readDestravaiApiUrl()}/v1/agents/unlock-task/runs`,
+      `${apiUrl}/v1/agents/unlock-task/runs`,
       {
         method: 'POST',
         headers: {

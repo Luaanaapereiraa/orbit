@@ -83,7 +83,7 @@ export function UnlockTaskPlan({
 
       <div className="flex flex-wrap gap-2">
         {!applied ? (
-          <Button type="button" onClick={onUsePlan}>
+          <Button type="button" data-initial-focus="" onClick={onUsePlan}>
             Usar este plano
           </Button>
         ) : null}

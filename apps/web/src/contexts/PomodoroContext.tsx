@@ -13,6 +13,7 @@ import {
 } from 'react'
 import {
   addDailyPlanSecondaryAction,
+  applyUnlockPlanToTask,
   applyUnlockPlanToTaskAction,
   addNewCycleAction,
   addTaskAction,
@@ -63,6 +64,11 @@ import {
 
 export type StartFocusResult = 'started' | 'already-active' | 'rejected'
 
+export type ApplyUnlockPlanOutcome =
+  | { status: 'applied'; taskId: string }
+  | { status: 'task_not_found' }
+  | { status: 'task_not_eligible' }
+
 function nowIso() {
   return new Date().toISOString()
 }
@@ -107,7 +113,7 @@ interface PomodoroContextType {
     nextAction: string
     estimatedMinutes: number
     energy: TaskEnergy
-  }) => void
+  }) => ApplyUnlockPlanOutcome
   moveTaskToActive: (taskId: string) => void
   setDailyPlanEssential: (dateKey: string, taskId: string | null) => void
   addDailyPlanSecondary: (dateKey: string, taskId: string) => void
@@ -431,13 +437,25 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
       nextAction: string
       estimatedMinutes: number
       energy: TaskEnergy
-    }) => {
+    }): ApplyUnlockPlanOutcome => {
+      const now = nowIso()
+      const result = applyUnlockPlanToTask(stateRef.current.tasks, {
+        ...input,
+        now,
+      })
+
       dispatch(
         applyUnlockPlanToTaskAction({
           ...input,
-          now: nowIso(),
+          now,
         }),
       )
+
+      if (result.status === 'applied') {
+        return { status: 'applied', taskId: result.task.id }
+      }
+
+      return { status: result.status }
     },
     [],
   )

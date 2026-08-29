@@ -19,6 +19,7 @@ export function UnlockTaskLoading({ onCancel }: UnlockTaskLoadingProps) {
   useEffect(() => {
     const reduced =
       typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduced) {
       return

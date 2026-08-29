@@ -6,32 +6,57 @@ import type {
 import type { UnlockAgentError } from './api/unlock-agent-errors'
 import type { UnlockFormFields } from './mappings'
 
+export type SubmittedUnlockContext = {
+  clientRequestId: string
+  taskId: string
+  taskTitle: string
+  submittedAt: string
+}
+
+export type UnlockFieldErrors = Partial<
+  Record<keyof UnlockFormFields, string>
+>
+
+type UnlockStateBase = {
+  fields: UnlockFormFields
+  submitted: SubmittedUnlockContext | null
+}
+
 export type UnlockDialogState =
-  | { status: 'form'; fields: UnlockFormFields }
-  | { status: 'submitting'; fields: UnlockFormFields }
-  | {
+  | (UnlockStateBase & {
+      status: 'form'
+      formError: UnlockAgentError | null
+      fieldErrors: UnlockFieldErrors
+    })
+  | (UnlockStateBase & {
+      status: 'submitting'
+      submitted: SubmittedUnlockContext
+    })
+  | (UnlockStateBase & {
       status: 'completed'
-      fields: UnlockFormFields
+      submitted: SubmittedUnlockContext
       response: UnlockTaskRunCompleted
       applied: boolean
-    }
-  | {
+    })
+  | (UnlockStateBase & {
       status: 'needs_clarification'
-      fields: UnlockFormFields
+      submitted: SubmittedUnlockContext
       response: UnlockTaskRunNeedsClarification
-    }
-  | {
+    })
+  | (UnlockStateBase & {
       status: 'rejected'
-      fields: UnlockFormFields
+      submitted: SubmittedUnlockContext
       response: UnlockTaskRunRejected
-    }
-  | {
+    })
+  | (UnlockStateBase & {
       status: 'error'
-      fields: UnlockFormFields
+      submitted: SubmittedUnlockContext | null
       error: UnlockAgentError
-    }
-  | {
+      retryAvailableAt: number | null
+    })
+  | (UnlockStateBase & {
       status: 'applied'
-      fields: UnlockFormFields
+      submitted: SubmittedUnlockContext
       response: UnlockTaskRunCompleted
-    }
+      appliedTaskId: string
+    })

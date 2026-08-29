@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '../../../components/ui/Button'
 import { Dialog } from '../../../components/ui/Dialog'
 import { useAuth } from '../../../contexts/AuthContext'
 import { usePomodoro } from '../../../contexts/PomodoroContext'
 import { toLocalDateKey, useLocalDateKey } from '../../../lib/local-date'
-import { ConfirmDialog } from '../../today/ConfirmDialog'
 import { runUnlockTaskAgent } from '../api/unlock-agent-client'
 import { useUnlockTaskAgent } from '../hooks/useUnlockTaskAgent'
 import {
@@ -22,11 +21,15 @@ import { UnlockTaskLoading } from './UnlockTaskLoading'
 import { UnlockTaskPlan } from './UnlockTaskPlan'
 import { UnlockTaskRejected } from './UnlockTaskRejected'
 
+const STALE_TASK_MESSAGE =
+  'Esta tarefa mudou enquanto o plano era criado. O plano não foi aplicado.'
+
 interface UnlockTaskDialogProps {
   open: boolean
   preferredTaskId?: string | null
   onClose: () => void
   run?: typeof runUnlockTaskAgent
+  now?: () => number
 }
 
 export function UnlockTaskDialog({
@@ -34,6 +37,7 @@ export function UnlockTaskDialog({
   preferredTaskId = null,
   onClose,
   run,
+  now,
 }: UnlockTaskDialogProps) {
   const router = useRouter()
   const { session, isLoading, getAccessToken } = useAuth()
@@ -68,66 +72,145 @@ export function UnlockTaskDialog({
     initialTaskId: suggested?.id ?? '',
     availableMinutes: settings.focusMinutes,
     run,
+    now,
   })
 
   const [confirm, setConfirm] = useState<'apply' | 'focus' | null>(null)
   const [focusBlocked, setFocusBlocked] = useState(false)
   const [justApplied, setJustApplied] = useState(false)
+  const [applyError, setApplyError] = useState<string | null>(null)
+  const [retryTick, setRetryTick] = useState(0)
+  const wasOpenRef = useRef(false)
+  const actionLockRef = useRef(false)
+  const appliedTaskIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!open || !suggested) {
-      return
+    if (open && !wasOpenRef.current) {
+      agent.reset(suggested?.id ?? '', settings.focusMinutes)
+      setConfirm(null)
+      setFocusBlocked(false)
+      setJustApplied(false)
+      setApplyError(null)
+      appliedTaskIdRef.current = null
     }
-    agent.reset(suggested.id, settings.focusMinutes)
-    setConfirm(null)
-    setFocusBlocked(false)
-    setJustApplied(false)
-    // Reset only when the dialog opens or the suggested task changes.
+    if (!open && wasOpenRef.current) {
+      agent.cancelWait()
+    }
+    wasOpenRef.current = open
+    // Reset only when the dialog opens or closes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, suggested?.id, settings.focusMinutes])
+  }, [open, settings.focusMinutes])
 
-  const selectedTask =
+  const submitted = agent.state.submitted
+  const submittedTask =
+    submitted !== null
+      ? (tasks.find((task) => task.id === submitted.taskId) ?? null)
+      : null
+  const submittedEligible =
+    submittedTask !== null && canRequestUnlock(submittedTask)
+
+  const formTask =
     eligible.find((task) => task.id === agent.state.fields.taskId) ??
     suggested ??
     null
 
-  function closeDialog() {
-    if (agent.state.status === 'submitting') {
-      agent.cancelWait()
+  const showingResult =
+    agent.state.status === 'completed' ||
+    agent.state.status === 'applied' ||
+    agent.state.status === 'needs_clarification' ||
+    agent.state.status === 'rejected'
+
+  const staleSubmittedTask = showingResult && submitted !== null && !submittedEligible
+
+  const retryAvailableAt =
+    agent.state.status === 'error' ? agent.state.retryAvailableAt : null
+  const retryRemainingMs =
+    retryAvailableAt === null
+      ? 0
+      : Math.max(0, retryAvailableAt - (now?.() ?? Date.now()))
+  const retryDisabled = retryRemainingMs > 0
+
+  useEffect(() => {
+    if (!retryDisabled) {
+      return
     }
+    const timer = window.setTimeout(() => {
+      setRetryTick((value) => value + 1)
+    }, Math.min(retryRemainingMs, 250))
+    return () => window.clearTimeout(timer)
+  }, [retryDisabled, retryRemainingMs, retryTick])
+
+  function closeDialog() {
+    agent.cancelWait()
     setConfirm(null)
     setFocusBlocked(false)
+    setApplyError(null)
     onClose()
   }
 
-  async function send(extraDetails?: string) {
-    if (!selectedTask || !dateKey || !canRequestUnlock(selectedTask)) {
+  function handleDialogClose() {
+    if (confirm) {
+      setConfirm(null)
       return
     }
-    const token = await getAccessToken()
-    if (!token) {
-      router.push('/login')
-      return
-    }
-    await agent.submit(selectedTask, dateKey, dailyPlans, token, extraDetails)
+    closeDialog()
   }
 
-  function applyPlan() {
+  async function send(extraDetails?: string) {
+    const taskForSubmit =
+      extraDetails !== undefined ||
+      agent.state.status === 'needs_clarification' ||
+      agent.state.status === 'error'
+        ? submittedTask
+        : formTask
+    if (!taskForSubmit || !dateKey || !canRequestUnlock(taskForSubmit)) {
+      return
+    }
+    setApplyError(null)
+    await agent.submit(taskForSubmit, dateKey, dailyPlans, getAccessToken, extraDetails)
+  }
+
+  function applyToSubmittedTask() {
     const response =
       agent.state.status === 'completed' || agent.state.status === 'applied'
         ? agent.state.response
         : null
-    if (!selectedTask || !response) {
-      return
+    if (!submitted || !response) {
+      return { status: 'task_not_found' as const }
     }
-    applyUnlockPlan({
-      taskId: selectedTask.id,
+
+    const target = tasks.find((task) => task.id === submitted.taskId) ?? null
+    if (!target || submitted.taskId !== target.id) {
+      return { status: 'task_not_found' as const }
+    }
+    if (!canRequestUnlock(target)) {
+      return { status: 'task_not_eligible' as const }
+    }
+
+    if (
+      appliedTaskIdRef.current === submitted.taskId ||
+      (agent.state.status === 'applied' &&
+        agent.state.appliedTaskId === submitted.taskId)
+    ) {
+      return { status: 'applied' as const, taskId: submitted.taskId }
+    }
+
+    const result = applyUnlockPlan({
+      taskId: submitted.taskId,
       nextAction: response.plan.nextAction,
       estimatedMinutes: response.plan.totalMinutes,
       energy: response.plan.energy,
     })
-    agent.markApplied()
-    setJustApplied(true)
+
+    if (result.status === 'applied' && result.taskId === submitted.taskId) {
+      appliedTaskIdRef.current = submitted.taskId
+      agent.markApplied(submitted.taskId)
+      setJustApplied(true)
+      setApplyError(null)
+      return result
+    }
+
+    return result
   }
 
   function handleUsePlan() {
@@ -135,159 +218,296 @@ export function UnlockTaskDialog({
   }
 
   function handleStartFocus() {
+    if (actionLockRef.current) {
+      return
+    }
     if (activeCycle) {
       setFocusBlocked(true)
       return
     }
-    if (agent.state.status === 'completed' && !agent.state.applied) {
+    const alreadyApplied =
+      appliedTaskIdRef.current === submitted?.taskId ||
+      (agent.state.status === 'applied' &&
+        agent.state.appliedTaskId === submitted?.taskId)
+    if (agent.state.status === 'completed' && !alreadyApplied) {
       setConfirm('focus')
       return
     }
-    startSelectedFocus()
+    startSubmittedFocus()
   }
 
-  function startSelectedFocus() {
-    if (!selectedTask) {
+  function startSubmittedFocus() {
+    if (actionLockRef.current) {
       return
     }
-    const result = startFocusForTask(selectedTask.id)
-    if (result === 'already-active') {
-      setFocusBlocked(true)
-      return
-    }
-    if (result === 'started') {
-      closeDialog()
-      router.push('/focus')
+    actionLockRef.current = true
+    try {
+      if (!submitted) {
+        return
+      }
+      const alreadyApplied =
+        appliedTaskIdRef.current === submitted.taskId ||
+        (agent.state.status === 'applied' &&
+          agent.state.appliedTaskId === submitted.taskId)
+      if (!alreadyApplied) {
+        const result = applyToSubmittedTask()
+        if (result.status !== 'applied') {
+          setApplyError(STALE_TASK_MESSAGE)
+          setJustApplied(false)
+          return
+        }
+      } else {
+        const target = tasks.find((task) => task.id === submitted.taskId) ?? null
+        if (!target || !canRequestUnlock(target)) {
+          setApplyError(STALE_TASK_MESSAGE)
+          return
+        }
+      }
+
+      if (activeCycle) {
+        setFocusBlocked(true)
+        return
+      }
+
+      const focusResult = startFocusForTask(submitted.taskId)
+      if (focusResult === 'already-active') {
+        setFocusBlocked(true)
+        return
+      }
+      if (focusResult === 'started') {
+        closeDialog()
+        router.push('/focus')
+      }
+    } finally {
+      actionLockRef.current = false
     }
   }
 
   function confirmAction() {
-    if (confirm === 'apply') {
-      applyPlan()
+    if (actionLockRef.current) {
+      return
     }
-    if (confirm === 'focus') {
-      applyPlan()
-      startSelectedFocus()
+    actionLockRef.current = true
+    try {
+      if (confirm === 'apply') {
+        const result = applyToSubmittedTask()
+        if (result.status !== 'applied') {
+          setApplyError(STALE_TASK_MESSAGE)
+          setJustApplied(false)
+        }
+      }
+      if (confirm === 'focus') {
+        actionLockRef.current = false
+        startSubmittedFocus()
+        setConfirm(null)
+        return
+      }
+      setConfirm(null)
+    } finally {
+      actionLockRef.current = false
     }
+  }
+
+  function startOverForAnotherTask() {
+    const other = eligible.find((task) => task.id !== submitted?.taskId)
+    agent.reset(other?.id ?? suggested?.id ?? '', settings.focusMinutes)
     setConfirm(null)
+    setJustApplied(false)
+    setApplyError(null)
+    appliedTaskIdRef.current = null
   }
 
   const signedIn = !!session && !isLoading
+  const applied =
+    agent.state.status === 'applied' ||
+    (agent.state.status === 'completed' && agent.state.applied) ||
+    justApplied
+  const focusKey = [
+    agent.state.status,
+    confirm ?? 'none',
+    applyError ? 'apply-error' : 'ok',
+    staleSubmittedTask ? 'stale' : 'fresh',
+    agent.state.status === 'form' ? agent.state.formError?.message ?? '' : '',
+  ].join(':')
 
   return (
-    <>
-      <Dialog
-        open={open}
-        title="Estou travada"
-        description="Peça um próximo passo pequeno. A tarefa só muda se você usar o plano."
-        onClose={closeDialog}
-      >
-        {!signedIn ? (
-          <div className="space-y-4">
-            <p className="text-sm text-muted dark:text-muted-dark">
-              Entre para receber um próximo passo criado para esta tarefa. Seu
-              planner continua funcionando normalmente sem login.
-            </p>
-            <Button type="button" onClick={() => router.push('/login')}>
-              Entrar para usar o agente
+    <Dialog
+      open={open}
+      title={
+        confirm === 'focus'
+          ? 'Usar este plano e começar o foco?'
+          : confirm === 'apply'
+            ? 'Usar este plano?'
+            : 'Estou travada'
+      }
+      description={
+        confirm
+          ? 'A próxima ação, a energia e o tempo estimado da tarefa serão atualizados. O título e o plano do dia permanecem iguais.'
+          : 'Peça um próximo passo pequeno. A tarefa só muda se você usar o plano.'
+      }
+      onClose={handleDialogClose}
+      focusKey={focusKey}
+    >
+      {confirm ? (
+        <div className="space-y-4">
+          <p className="text-sm text-muted dark:text-muted-dark">
+            A próxima ação, a energia e o tempo estimado da tarefa serão
+            atualizados. O título e o plano do dia permanecem iguais.
+          </p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setConfirm(null)}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" data-initial-focus="" onClick={confirmAction}>
+              Usar este plano
             </Button>
           </div>
-        ) : !selectedTask ? (
-          <p className="text-sm text-muted dark:text-muted-dark" role="status">
-            Não há tarefa elegível agora. Capture ou reabra uma tarefa para
-            pedir ajuda.
+        </div>
+      ) : !signedIn ? (
+        <div className="space-y-4">
+          <p className="text-sm text-muted dark:text-muted-dark">
+            Entre para receber um próximo passo criado para esta tarefa. Seu
+            planner continua funcionando normalmente sem login.
           </p>
-        ) : agent.state.status === 'submitting' ? (
-          <UnlockTaskLoading
-            onCancel={() => {
-              agent.cancelWait()
-              agent.backToForm(false)
-            }}
-          />
-        ) : agent.state.status === 'completed' ||
-          agent.state.status === 'applied' ? (
+          <Button
+            type="button"
+            data-initial-focus=""
+            onClick={() => router.push('/login')}
+          >
+            Entrar para usar o agente
+          </Button>
+        </div>
+      ) : staleSubmittedTask ? (
+        <div className="space-y-4">
+          <p className="text-sm text-danger" role="alert">
+            {STALE_TASK_MESSAGE}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" data-initial-focus="" onClick={closeDialog}>
+              Fechar
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                agent.backToForm(true)
+                setApplyError(null)
+                appliedTaskIdRef.current = null
+              }}
+            >
+              Voltar ao formulário
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={startOverForAnotherTask}
+            >
+              Criar um novo plano para outra tarefa
+            </Button>
+          </div>
+        </div>
+      ) : !formTask && agent.state.status === 'form' ? (
+        <p className="text-sm text-muted dark:text-muted-dark" role="status">
+          Não há tarefa elegível agora. Capture ou reabra uma tarefa para
+          pedir ajuda.
+        </p>
+      ) : agent.state.status === 'submitting' ? (
+        <UnlockTaskLoading
+          onCancel={() => {
+            agent.cancelWait()
+            agent.backToForm(false)
+          }}
+        />
+      ) : agent.state.status === 'completed' ||
+        agent.state.status === 'applied' ? (
+        <div className="space-y-4">
+          {applyError ? (
+            <p className="text-sm text-danger" role="alert">
+              {applyError}
+            </p>
+          ) : null}
           <UnlockTaskPlan
             response={agent.state.response}
-            applied={
-              agent.state.status === 'applied' ||
-              (agent.state.status === 'completed' && agent.state.applied) ||
-              justApplied
-            }
+            applied={applied && !applyError}
             focusMinutes={settings.focusMinutes}
             onUsePlan={handleUsePlan}
             onStartFocus={handleStartFocus}
-            onRetry={() => agent.backToForm(true)}
+            onRetry={() => {
+              agent.backToForm(true)
+              setJustApplied(false)
+              setApplyError(null)
+              appliedTaskIdRef.current = null
+            }}
             onDismiss={closeDialog}
           />
-        ) : agent.state.status === 'needs_clarification' ? (
-          <UnlockTaskClarification
-            question={agent.state.response.question}
-            onContinue={(answer) => {
-              send(answer)
-            }}
-          />
-        ) : agent.state.status === 'rejected' ? (
-          <UnlockTaskRejected
-            message={agent.state.response.message}
-            onClose={closeDialog}
-          />
-        ) : agent.state.status === 'error' ? (
-          <UnlockTaskErrorView
-            error={agent.state.error}
-            onRetry={() => send()}
-            onSignIn={() => router.push('/login')}
-            onClose={closeDialog}
-          />
-        ) : (
-          <UnlockTaskForm
-            fields={agent.state.fields}
-            tasks={eligible}
-            selectedTask={selectedTask}
-            onChange={agent.patchFields}
-            onSubmit={() => send()}
-          />
-        )}
+        </div>
+      ) : agent.state.status === 'needs_clarification' ? (
+        <UnlockTaskClarification
+          question={agent.state.response.question}
+          onContinue={(answer) => {
+            send(answer)
+          }}
+        />
+      ) : agent.state.status === 'rejected' ? (
+        <UnlockTaskRejected
+          message={agent.state.response.message}
+          onClose={closeDialog}
+        />
+      ) : agent.state.status === 'error' ? (
+        <UnlockTaskErrorView
+          error={agent.state.error}
+          retryDisabled={retryDisabled}
+          retryHint={
+            retryDisabled
+              ? `Aguarde ${Math.ceil(retryRemainingMs / 1000)}s para consultar de novo.`
+              : null
+          }
+          onRetry={() => send()}
+          onSignIn={() => router.push('/login')}
+          onClose={closeDialog}
+        />
+      ) : (
+        <UnlockTaskForm
+          fields={agent.state.fields}
+          tasks={eligible}
+          selectedTask={formTask}
+          onChange={agent.patchFields}
+          onSubmit={() => send()}
+          disabled={agent.state.status === 'form' ? false : true}
+          formError={agent.state.formError}
+          fieldErrors={agent.state.fieldErrors}
+        />
+      )}
 
-        {focusBlocked ? (
-          <div className="mt-4 space-y-2 rounded-xl border border-line px-3 py-3 dark:border-line-dark">
-            <p className="text-sm text-ink dark:text-ink-dark" role="status">
-              Já existe um ciclo em andamento. Ele não foi interrompido.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                onClick={() => {
-                  closeDialog()
-                  router.push('/focus')
-                }}
-              >
-                Ir para o foco atual
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setFocusBlocked(false)}
-              >
-                Cancelar
-              </Button>
-            </div>
+      {focusBlocked ? (
+        <div className="mt-4 space-y-2 rounded-xl border border-line px-3 py-3 dark:border-line-dark">
+          <p className="text-sm text-ink dark:text-ink-dark" role="status">
+            Já existe um ciclo em andamento. Ele não foi interrompido.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => {
+                closeDialog()
+                router.push('/focus')
+              }}
+            >
+              Ir para o foco atual
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setFocusBlocked(false)}
+            >
+              Cancelar
+            </Button>
           </div>
-        ) : null}
-      </Dialog>
-
-      <ConfirmDialog
-        open={confirm !== null}
-        title={
-          confirm === 'focus'
-            ? 'Usar este plano e começar o foco?'
-            : 'Usar este plano?'
-        }
-        description="A próxima ação, a energia e o tempo estimado da tarefa serão atualizados. O título e o plano do dia permanecem iguais."
-        confirmLabel="Usar este plano"
-        confirmVariant="primary"
-        onConfirm={confirmAction}
-        onClose={() => setConfirm(null)}
-      />
-    </>
+        </div>
+      ) : null}
+    </Dialog>
   )
 }

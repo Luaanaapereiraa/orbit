@@ -87,6 +87,52 @@ export function clampAvailableMinutes(value: number) {
   )
 }
 
+const FIELD_PATHS: Array<[keyof UnlockFormFields, string[]]> = [
+  ['taskId', ['taskId', 'task.id', 'task']],
+  ['blockageReason', ['blockageReason']],
+  ['blockageDetails', ['blockageDetails']],
+  ['currentEnergy', ['currentEnergy']],
+  ['availableMinutes', ['availableMinutes']],
+]
+
+export function fieldErrorsFromDetails(
+  details: { path: string; message: string }[] | undefined,
+): Partial<Record<keyof UnlockFormFields, string>> {
+  const errors: Partial<Record<keyof UnlockFormFields, string>> = {}
+  if (!details) {
+    return errors
+  }
+
+  for (const detail of details) {
+    const path = detail.path.toLowerCase()
+    const match = FIELD_PATHS.find(([, aliases]) =>
+      aliases.some(
+        (alias) =>
+          path === alias.toLowerCase() ||
+          path.endsWith(`.${alias.toLowerCase()}`),
+      ),
+    )
+    if (match && !errors[match[0]]) {
+      errors[match[0]] = detail.message
+    }
+  }
+
+  return errors
+}
+
+export function firstInvalidUnlockField(
+  fieldErrors: Partial<Record<keyof UnlockFormFields, string>>,
+): keyof UnlockFormFields | null {
+  const order: Array<keyof UnlockFormFields> = [
+    'taskId',
+    'blockageReason',
+    'currentEnergy',
+    'availableMinutes',
+    'blockageDetails',
+  ]
+  return order.find((field) => fieldErrors[field]) ?? null
+}
+
 export function createUnlockFormFields(
   taskId: string,
   availableMinutes: number,

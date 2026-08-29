@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { UnlockTaskRunRequestSchema } from '@destravai/contracts'
 import { POST } from './route'
 
@@ -57,8 +57,19 @@ function proxyRequest(body: unknown, token = 'user-jwt') {
 }
 
 describe('unlock-task proxy', () => {
+  const previousApiUrl = process.env.DESTRAVAI_API_URL
+
   afterEach(() => {
     vi.unstubAllGlobals()
+    if (previousApiUrl === undefined) {
+      delete process.env.DESTRAVAI_API_URL
+    } else {
+      process.env.DESTRAVAI_API_URL = previousApiUrl
+    }
+  })
+
+  beforeEach(() => {
+    process.env.DESTRAVAI_API_URL = 'http://localhost:3333'
   })
 
   it('forwards a valid request with only the needed headers', async () => {

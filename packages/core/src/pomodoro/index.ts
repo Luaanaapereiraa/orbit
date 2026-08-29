@@ -291,7 +291,7 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
     case ActionTypes.APPLY_UNLOCK_PLAN:
       return withTasksAndPlans(
         state,
-        applyUnlockPlanToTask(state.tasks, action.payload),
+        applyUnlockPlanToTask(state.tasks, action.payload).tasks,
         state.dailyPlans,
       )
 

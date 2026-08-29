@@ -10,6 +10,7 @@ export type {
 } from './pomodoro/types'
 export type { DailyPlan } from './daily-plan/types'
 export type { BuildTaskInput, LegacyTask } from './tasks/types'
+export type { ApplyUnlockPlanResult } from './tasks'
 export {
   ActionTypes,
   defaultSettings,
