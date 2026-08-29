@@ -10,11 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createSupabaseBrowserClient } from '../lib/auth/supabase-browser'
-import type {
-  AuthClient,
-  AuthContextValue,
-  Session,
-} from '../lib/auth/types'
+import type { AuthClient, AuthContextValue, Session } from '../lib/auth/types'
 import { isPublicAuthConfigured } from '../lib/public-env'
 
 const fallbackAuth: AuthContextValue = {

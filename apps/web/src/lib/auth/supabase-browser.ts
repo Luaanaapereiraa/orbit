@@ -1,5 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr'
-import type { Session as SupabaseSession, SupabaseClient } from '@supabase/supabase-js'
+import type {
+  Session as SupabaseSession,
+  SupabaseClient,
+} from '@supabase/supabase-js'
 import {
   isPublicAuthConfigured,
   readPublicSupabasePublishableKey,

@@ -170,7 +170,10 @@ export function buildUnlockTaskRequest(input: {
     today: {
       date: input.dateKey,
       role: todayRoleForTask(input.task.id, input.dateKey, input.dailyPlans),
-      plannedTaskCount: plannedTaskCountForDate(input.dateKey, input.dailyPlans),
+      plannedTaskCount: plannedTaskCountForDate(
+        input.dateKey,
+        input.dailyPlans,
+      ),
     },
     locale: 'pt-BR',
   })

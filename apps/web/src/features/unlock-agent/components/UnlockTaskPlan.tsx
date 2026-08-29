@@ -32,8 +32,8 @@ export function UnlockTaskPlan({
         </p>
       ) : (
         <p className="text-sm text-muted dark:text-muted-dark">
-          Isto é uma sugestão para esta tarefa. Nada muda até você escolher
-          usar o plano.
+          Isto é uma sugestão para esta tarefa. Nada muda até você escolher usar
+          o plano.
         </p>
       )}
 

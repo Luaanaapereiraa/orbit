@@ -40,7 +40,7 @@ export function UnlockTaskForm({
         <select
           value={fields.taskId}
           disabled={disabled}
-          onChange={(event) => onChange({ taskId: event.target.value }, true)}
+          onChange={(event) => onChange({ taskId: event.target.value })}
           className="h-11 w-full rounded-xl border border-line bg-transparent px-3 text-sm outline-none focus:border-brand dark:border-line-dark"
         >
           {tasks.map((task) => (
@@ -71,9 +71,7 @@ export function UnlockTaskForm({
                 value={option.value}
                 checked={fields.blockageReason === option.value}
                 disabled={disabled}
-                onChange={() =>
-                  onChange({ blockageReason: option.value }, true)
-                }
+                onChange={() => onChange({ blockageReason: option.value })}
               />
               {option.label}
             </label>
@@ -89,7 +87,7 @@ export function UnlockTaskForm({
               key={option.value}
               type="button"
               disabled={disabled}
-              onClick={() => onChange({ currentEnergy: option.value }, true)}
+              onClick={() => onChange({ currentEnergy: option.value })}
               className={`h-11 rounded-xl px-4 text-sm font-bold focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none ${
                 fields.currentEnergy === option.value
                   ? 'bg-brand text-white'
@@ -110,7 +108,7 @@ export function UnlockTaskForm({
               key={minutes}
               type="button"
               disabled={disabled}
-              onClick={() => onChange({ availableMinutes: minutes }, true)}
+              onClick={() => onChange({ availableMinutes: minutes })}
               className={`h-11 rounded-xl px-4 text-sm font-bold focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none ${
                 fields.availableMinutes === minutes
                   ? 'bg-brand text-white'
@@ -130,7 +128,7 @@ export function UnlockTaskForm({
           maxLength={BLOCKAGE_DETAILS_MAX_LENGTH}
           disabled={disabled}
           onChange={(event) =>
-            onChange({ blockageDetails: event.target.value }, true)
+            onChange({ blockageDetails: event.target.value })
           }
           rows={3}
           className="w-full rounded-xl border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-brand dark:border-line-dark"

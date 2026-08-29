@@ -8,7 +8,7 @@ import { MagicLinkForm } from '../../features/auth/MagicLinkForm'
 
 function LoginContent() {
   const params = useSearchParams()
-  const error = params.get('error')
+  const error = params?.get('error')
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">

@@ -20,12 +20,21 @@ type Action =
   | { type: 'reset'; fields: UnlockFormFields }
   | { type: 'patch'; fields: Partial<UnlockFormFields>; refreshId?: boolean }
   | { type: 'submitting' }
-  | { type: 'completed'; response: Extract<UnlockTaskRunResponse, { status: 'completed' }> }
+  | {
+      type: 'completed'
+      response: Extract<UnlockTaskRunResponse, { status: 'completed' }>
+    }
   | {
       type: 'needs_clarification'
-      response: Extract<UnlockTaskRunResponse, { status: 'needs_clarification' }>
+      response: Extract<
+        UnlockTaskRunResponse,
+        { status: 'needs_clarification' }
+      >
     }
-  | { type: 'rejected'; response: Extract<UnlockTaskRunResponse, { status: 'rejected' }> }
+  | {
+      type: 'rejected'
+      response: Extract<UnlockTaskRunResponse, { status: 'rejected' }>
+    }
   | { type: 'error'; error: UnlockAgentError }
   | { type: 'applied' }
   | { type: 'backToForm'; newRequestId?: boolean }

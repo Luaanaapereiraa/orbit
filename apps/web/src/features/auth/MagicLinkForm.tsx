@@ -53,8 +53,8 @@ export function MagicLinkForm({
           Link enviado
         </h3>
         <p className="text-sm text-muted dark:text-muted-dark">
-          Abra o e-mail e toque no link de acesso. Depois você volta para a
-          Tela Hoje.
+          Abra o e-mail e toque no link de acesso. Depois você volta para a Tela
+          Hoje.
         </p>
       </div>
     )

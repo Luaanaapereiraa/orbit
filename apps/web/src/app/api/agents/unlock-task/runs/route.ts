@@ -3,6 +3,7 @@ import {
   UnlockTaskRunRequestSchema,
   UnlockTaskRunResponseSchema,
 } from '@destravai/contracts'
+import { NextResponse } from 'next/server'
 import { readDestravaiApiUrl } from '../../../../../lib/server-env'
 
 export const dynamic = 'force-dynamic'
@@ -11,7 +12,7 @@ const TIMEOUT_MS = 45_000
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
 function safeError(status: number, code: string, message: string) {
-  return Response.json(
+  return NextResponse.json(
     {
       error: {
         code,
@@ -25,8 +26,15 @@ function safeError(status: number, code: string, message: string) {
 
 export async function POST(request: Request) {
   const authorization = request.headers.get('authorization')
-  if (!authorization?.startsWith('Bearer ') || authorization.length < 16) {
-    return safeError(401, 'UNAUTHORIZED', 'Entre na sua conta para pedir ajuda.')
+  const accessToken = authorization?.startsWith('Bearer ')
+    ? authorization.slice('Bearer '.length).trim()
+    : ''
+  if (!accessToken) {
+    return safeError(
+      401,
+      'UNAUTHORIZED',
+      'Entre na sua conta para pedir ajuda.',
+    )
   }
 
   let body: unknown
@@ -54,7 +62,7 @@ export async function POST(request: Request) {
       {
         method: 'POST',
         headers: {
-          authorization,
+          authorization: `Bearer ${accessToken}`,
           accept: 'application/json',
           'content-type': 'application/json',
         },
@@ -76,7 +84,7 @@ export async function POST(request: Request) {
         )
       }
 
-      return Response.json(response.data, {
+      return NextResponse.json(response.data, {
         status: upstream.status,
         headers: NO_STORE,
       })
@@ -84,7 +92,7 @@ export async function POST(request: Request) {
 
     const errorBody = ApiErrorResponseSchema.safeParse(raw)
     if (errorBody.success) {
-      return Response.json(errorBody.data, {
+      return NextResponse.json(errorBody.data, {
         status: upstream.status,
         headers: NO_STORE,
       })

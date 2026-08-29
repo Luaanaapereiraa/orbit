@@ -38,11 +38,17 @@ export class UnlockAgentError extends Error {
 
 const STATUS_MAP: Record<
   number,
-  { code: UnlockAgentErrorCode; message: string; retryable: boolean; sameRequest: boolean }
+  {
+    code: UnlockAgentErrorCode
+    message: string
+    retryable: boolean
+    sameRequest: boolean
+  }
 > = {
   401: {
     code: 'unauthenticated',
-    message: 'Entre de novo para pedir ajuda. Seu planner continua no mesmo lugar.',
+    message:
+      'Entre de novo para pedir ajuda. Seu planner continua no mesmo lugar.',
     retryable: false,
     sameRequest: false,
   },
@@ -67,13 +73,15 @@ const STATUS_MAP: Record<
   },
   502: {
     code: 'provider_error',
-    message: 'O assistente não conseguiu concluir agora. Tente de novo em instantes.',
+    message:
+      'O assistente não conseguiu concluir agora. Tente de novo em instantes.',
     retryable: true,
     sameRequest: false,
   },
   503: {
     code: 'temporarily_unavailable',
-    message: 'A ajuda está indisponível no momento. Tente de novo daqui a pouco.',
+    message:
+      'A ajuda está indisponível no momento. Tente de novo daqui a pouco.',
     retryable: true,
     sameRequest: false,
   },
@@ -94,11 +102,11 @@ export function unlockAgentErrorFromResponse(
   const apiCode = parsed.success ? parsed.data.error.code : null
 
   if (apiCode === 'AGENT_QUOTA_EXCEEDED' || apiCode === 'RATE_LIMITED') {
-    return new UnlockAgentError(
-      'quota_exceeded',
-      STATUS_MAP[429].message,
-      { status, retryable: false, sameRequest: false },
-    )
+    return new UnlockAgentError('quota_exceeded', STATUS_MAP[429].message, {
+      status,
+      retryable: false,
+      sameRequest: false,
+    })
   }
 
   if (mapped) {

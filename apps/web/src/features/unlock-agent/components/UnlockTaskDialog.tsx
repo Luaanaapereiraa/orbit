@@ -47,7 +47,8 @@ export function UnlockTaskDialog({
     startFocusForTask,
     applyUnlockPlan,
   } = usePomodoro()
-  const dateKey = useLocalDateKey(hydrated) ?? (hydrated ? toLocalDateKey() : null)
+  const dateKey =
+    useLocalDateKey(hydrated) ?? (hydrated ? toLocalDateKey() : null)
   const eligible = useMemo(() => eligibleUnlockTasks(tasks), [tasks])
   const suggested = useMemo(
     () =>

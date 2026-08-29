@@ -28,7 +28,9 @@ Este repositório é um monorepo com npm workspaces. A interface atual continua 
 
 | URL | Tela |
 | --- | --- |
-| `/` | Timer |
+| `/` | Hoje |
+| `/focus` | Foco |
+| `/login` | Magic link |
 | `/history` | Histórico |
 | `/stats` | Estatísticas |
 | `/settings` | Configurações |
@@ -37,7 +39,7 @@ As rotas ficam no App Router (`src/app/(product)/`). O grupo `(product)` não al
 
 ### `apps/web` (`@destravai/web`)
 
-Aplicação web: interface, App Router, persistência em `localStorage`, tema, sons, notificações do navegador, PWA e o `PomodoroContext` (React). Consome o domínio via `@destravai/core`.
+Aplicação web: interface, App Router, persistência em `localStorage`, tema, sons, notificações do navegador, PWA e o `PomodoroContext` (React). Consome o domínio via `@destravai/core`. O fluxo “Estou travada” autentica com magic link, passa pelo proxy `POST /api/agents/unlock-task/runs` e só aplica o plano com confirmação explícita. Detalhes em `apps/web/README.md`.
 
 Client Components são usados só onde há hooks, contexto, eventos, `usePathname` ou APIs do navegador. O root layout, metadata e o layout estrutural das rotas permanecem Server Components.
 
@@ -58,7 +60,7 @@ npm run dev:api
 - Health: `GET http://localhost:3333/health`
 - Ready: `GET http://localhost:3333/ready`
 - Auth: `Authorization: Bearer <access token do Supabase>`. A API verifica a assinatura via JWKS (não só decodifica).
-- Agente: `POST /v1/agents/unlock-task/runs`. O plano é salvo só como sugestão; aplicar na tarefa é etapa da interface.
+- Agente: `POST /v1/agents/unlock-task/runs`. A web chega nesse endpoint só pelo proxy server-side. O plano é uma sugestão; aplicar na tarefa é etapa consciente da interface.
 - Rate limit: por IP em memória, adequado a **uma instância**. `/health` e `/ready` ficam fora da cota do prefixo de agentes. Há cota diária por usuário (UTC) no banco.
 - Docs: Swagger UI só com `ENABLE_API_DOCS=true`.
 

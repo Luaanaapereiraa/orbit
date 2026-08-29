@@ -19,8 +19,8 @@ type UnlockTaskFetch = (
     headers?: Record<string, string>
     body?: string
     signal?: AbortSignal
-    cache?: RequestCache
-    credentials?: RequestCredentials
+    cache?: 'no-store'
+    credentials?: 'same-origin'
   },
 ) => Promise<Response>
 

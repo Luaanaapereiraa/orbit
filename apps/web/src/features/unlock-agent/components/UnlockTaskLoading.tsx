@@ -31,7 +31,12 @@ export function UnlockTaskLoading({ onCancel }: UnlockTaskLoadingProps) {
   }, [])
 
   return (
-    <div className="space-y-4" role="status" aria-live="polite" aria-busy="true">
+    <div
+      className="space-y-4"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
       <p className="text-sm text-ink dark:text-ink-dark">{MESSAGES[index]}</p>
       <p className="text-sm text-muted dark:text-muted-dark">
         Isso pode levar alguns segundos. Fechar agora só interrompe a espera
