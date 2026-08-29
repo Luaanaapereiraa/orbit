@@ -9,12 +9,14 @@ import { ActiveFocusCard } from './ActiveFocusCard'
 import { DailyPlanView } from './DailyPlanView'
 import { InboxPreview } from './InboxPreview'
 import { QuickCapture } from './QuickCapture'
+import { UnlockTaskDialog } from '../unlock-task/UnlockTaskDialog'
 import { TaskEditor } from './TaskEditor'
 
 export function TodayPage() {
   const { hydrated } = usePomodoro()
   const dateKey = useLocalDateKey(hydrated)
   const [editing, setEditing] = useState<Task | null>(null)
+  const [unlocking, setUnlocking] = useState<Task | null>(null)
   const [completionMessage, setCompletionMessage] = useState('')
 
   if (!hydrated || !dateKey) {

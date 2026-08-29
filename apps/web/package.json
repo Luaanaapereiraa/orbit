@@ -11,7 +11,9 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@destravai/contracts": "*",
     "@destravai/core": "*",
+    "@supabase/supabase-js": "^2.90.1",
     "@phosphor-icons/react": "^2.1.10",
     "clsx": "^2.1.1",
     "date-fns": "^2.30.0",

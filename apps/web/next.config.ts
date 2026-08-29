@@ -3,7 +3,7 @@ import { withSerwist } from '@serwist/turbopack'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@destravai/core'],
+  transpilePackages: ['@destravai/core', '@destravai/contracts'],
   images: {
     unoptimized: true,
   },
