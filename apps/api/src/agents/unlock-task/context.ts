@@ -9,6 +9,7 @@ export interface UnlockRunContext {
   taskContextRead: boolean
   validatedPlanHash: string | null
   savedPlanId: string | null
+  cancelled: boolean
   protocol: Array<
     | 'get_task_context'
     | 'validate_unlock_plan'
@@ -30,6 +31,13 @@ export function createUnlockRunContext(input: {
     taskContextRead: false,
     validatedPlanHash: null,
     savedPlanId: null,
+    cancelled: false,
     protocol: [],
+  }
+}
+
+export function assertRunNotCancelled(context: UnlockRunContext) {
+  if (context.cancelled) {
+    throw new Error('run_cancelled')
   }
 }

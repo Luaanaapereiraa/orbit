@@ -30,6 +30,10 @@ Isso é um **agente**, não um chatbot: o modelo só conclui um plano depois de 
 
 O SDK usado é `@openai/agents` (Responses API). Não há Assistants API, LangChain, chave no navegador nem chamada direta da web para a OpenAI.
 
+A cota e as transições de run/plano são mutadas só por funções SQL `SECURITY DEFINER`. O JWT autenticado pode `SELECT` as próprias linhas; não tem `INSERT`/`UPDATE`/`DELETE` nas tabelas internas.
+
+O timeout cria um `AbortController`, passa `AbortSignal` ao SDK e arbitra no banco: `running` → save do agente **ou** `fallback_pending` → save do fallback. Não há dois planos por run.
+
 ## Fluxo de execução
 
 1. Autentica o Bearer JWT do Supabase.
@@ -37,9 +41,9 @@ O SDK usado é `@openai/agents` (Responses API). Não há Assistants API, LangCh
 3. Inspeciona o texto com guardrail de entrada (crise / autoagressão). Falha de moderação → `503` (não libera a execução).
 4. Reserva a cota diária e cria `agent_run` de forma atômica (RPC no Postgres; mutex na memória de teste).
 5. Idempotência por `(user_id, clientRequestId)`.
-6. Executa o agente (timeout externo, no máximo 8 turnos, concorrência de ferramentas = 1).
-7. Valida o protocolo e persiste o resultado.
-8. Resposta discriminada: `completed` | `needs_clarification` | `rejected`.
+6. Executa o agente (timeout com `AbortSignal`, no máximo 8 turnos, `parallelToolCalls: false`).
+7. Valida o protocolo e persiste o resultado. Timeout e provedor recuperável passam pela arbitragem atômica no repositório.
+8. Resposta discriminada: `completed` | `needs_clarification` | `rejected`. A resposta `completed` é confirmada com o plano persistido.
 
 ## Ferramentas
 
@@ -62,11 +66,14 @@ Copie `.env.example` para `.env`. `process.env` só é lido em `loadConfig` (e n
 | `OPENAI_TRACE_INCLUDE_SENSITIVE_DATA` | Deve ser `false` em produção. |
 | `AGENT_TIMEOUT_MS` | Padrão `20000`. |
 | `AGENT_MAX_TURNS` | Padrão `8`. |
-| `AGENT_DAILY_LIMIT` | Padrão `5` reservas por usuário por **dia civil UTC**. |
+| `AGENT_DAILY_LIMIT` | Usado pelo repositório em memória e como documentação do padrão. Em Supabase o limite vem de `agent_quota_settings.daily_limit` (inicial 5). |
+| `AGENT_LEASE_MS` | Duração da lease de uma run `running`/`fallback_pending` (padrão 90s). Depois da expiração a mesma `clientRequestId` pode ser recuperada sem nova cota. |
 | `AGENT_REPOSITORY` | `supabase` em produção. `memory` só em testes ou desenvolvimento explícito. |
 | `RUN_LIVE_AGENT_TESTS` | `false` nos testes comuns. Live eval só com `true`. |
 
-Produção também exige `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY`. Não use `service_role` nas requisições do usuário. O repositório abre um cliente Supabase com o JWT do caller e respeita RLS.
+Produção também exige `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY`. Não use `service_role` nas requisições do usuário. O repositório abre um cliente Supabase com o JWT do caller. Mutações passam por RPC; o cliente não escreve tabelas do agente.
+
+Zod: `@destravai/api` e `@destravai/contracts` devem resolver **Zod 3.25.76** (`errorMap`). O Serwist da web pode continuar em Zod 4. Sempre rode `npm ci` **na raiz** do monorepo; não rode `npm ci` dentro de `apps/api`. A duplicidade de majors não está unificada no lockfile inteiro.
 
 ## Segurança e privacidade
 
@@ -81,15 +88,24 @@ Produção também exige `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY`. Não use `
 Mesma combinação de usuário e `clientRequestId`:
 
 - Execução terminal (`completed`, `needs_clarification`, `rejected`) devolve a resposta persistida.
-- Execução `running` / `pending` devolve `409 CONFLICT`.
+- Execução `running` / `pending` / `fallback_pending` com lease válida devolve `409 CONFLICT`.
+- Lease expirada permite recuperar a mesma run **sem** consumir cota extra (um worker por vez).
 - Corridas concorrentes não criam duas execuções nem dois planos (unique `(user_id, client_request_id)` + lock da cota).
 - `failed` pode ser re tentada **sem** consumir cota extra.
 
-A idempotência não é só em memória: no Postgres ela vive na constraint e na RPC `start_unlock_agent_run`.
+A idempotência não é só em memória: no Postgres ela vive na constraint e na RPC `start_unlock_agent_run` (`SECURITY DEFINER`, identidade via `auth.uid()`).
 
 ## Cotas
 
-Limite diário por usuário (`AGENT_DAILY_LIMIT`). A reserva é atômica (`SELECT … FOR UPDATE` na linha de `agent_daily_usage` + incremento na mesma transação). Exceder a cota devolve `429` com `code: AGENT_QUOTA_EXCEEDED` (distinto do rate limit por IP).
+O limite diário em produção está em `public.agent_quota_settings` (uma linha, `daily_limit` inicial 5, faixa 1–100). `authenticated` não lê nem escreve essa tabela. Um operador altera com sessão privilegiada:
+
+```sql
+UPDATE public.agent_quota_settings
+SET daily_limit = 8, updated_at = now()
+WHERE id = 1;
+```
+
+A reserva é atômica (`SELECT … FOR UPDATE` na linha de `agent_daily_usage` + incremento na mesma transação). O cliente **não** informa o limite. Exceder a cota devolve `429` com `code: AGENT_QUOTA_EXCEEDED` (distinto do rate limit por IP).
 
 O dia da cota é o **dia civil UTC** (`timezone('utc', now())::date`). Documente isso para o produto: a virada não segue o fuso do usuário.
 
@@ -105,15 +121,17 @@ Envelope `ApiErrorResponse`:
 | 401 | `UNAUTHORIZED` |
 | 409 | `CONFLICT` |
 | 429 | `AGENT_QUOTA_EXCEEDED` ou `RATE_LIMITED` |
-| 502 | `BAD_GATEWAY` (protocolo/resposta inválida do provedor) |
+| 502 | `BAD_GATEWAY` (protocolo/resposta inválida) ou `AGENT_MAX_TURNS_EXCEEDED` (estouro de turnos, **sem** fallback) |
 | 503 | `SERVICE_UNAVAILABLE` |
-| 504 | `GATEWAY_TIMEOUT` (timeout sem fallback persistível) |
+| 504 | `GATEWAY_TIMEOUT` (timeout com arbitragem vencida, mas fallback não persistiu) |
+
+Classificação de fallback: permitido só após timeout efetivamente cancelado e arbitrado, ou erro transitório do provedor **antes** de persistir um plano. Sem fallback para `MaxTurnsExceeded`, protocolo, resultado inválido, safety, auth, contrato, banco, plano já salvo ou estado incompatível.
 
 Sem stack, prompt, resposta bruta da OpenAI ou detalhe interno do Supabase.
 
 ## Fallback
 
-Usado só para timeout, indisponibilidade transitória ou erro técnico recuperável do modelo. Gera 2 passos válidos, respeita tempo/energia, persiste normalmente e devolve `generationMode: 'fallback'`. Não contorna rejeição de segurança nem mascara auth, contrato ou falha de banco.
+Usado só no eixo timeout/provedor recuperável. O timeout tenta `running → fallback_pending` só se ainda não houver plano. Gera 2 passos válidos, persiste com `generationMode: 'fallback'` e devolve o plano **lido do repositório**. Não substitui plano do agente nem mascara rejeição de segurança, auth, contrato ou falha de banco.
 
 ## Como executar testes
 
@@ -183,8 +201,9 @@ curl -sS http://localhost:3333/v1/agents/unlock-task/runs \
 - Sem migração de tarefas do `localStorage`.
 - Repositório em memória não serve produção.
 - Rate limit por IP é in-memory (uma instância).
-- Execução `running` abandonada (crash) continua `409` até intervenção; `failed` pode ser re tentada.
+- Execução `running` abandonada (crash) pode ser recuperada depois da lease; `failed` pode ser re tentada.
 - Cota no dia UTC, não no fuso local do usuário.
+- RLS e grants corretivos precisam ser validados num projeto Supabase real (os testes comuns cobrem SQL + memória).
 
 ## Comandos
 

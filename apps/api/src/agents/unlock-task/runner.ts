@@ -5,7 +5,7 @@ import {
   withTrace,
 } from '@openai/agents'
 import type { AppConfig } from '../../config/env.js'
-import { UNLOCK_TOOL_CONCURRENCY, createUnlockTaskAgent } from './agent.js'
+import { createUnlockTaskAgent } from './agent.js'
 import type { UnlockRunContext } from './context.js'
 import { UNLOCK_WORKFLOW_NAME } from './instructions.js'
 import { AgentOutputSchema, type AgentOutput } from './schemas.js'
@@ -31,6 +31,13 @@ export class AgentProtocolError extends Error {
   }
 }
 
+export class AgentMaxTurnsError extends Error {
+  constructor() {
+    super('agent_max_turns_exceeded')
+    this.name = 'AgentMaxTurnsError'
+  }
+}
+
 export interface UnlockAgentRunner {
   run(context: UnlockRunContext): Promise<{
     output: AgentOutput
@@ -42,39 +49,55 @@ export interface UnlockAgentRunner {
   }>
 }
 
-export function unlockRunOptions(config: AppConfig, context: UnlockRunContext) {
+export function unlockRunOptions(
+  config: AppConfig,
+  context: UnlockRunContext,
+  signal?: AbortSignal,
+) {
   return {
     context,
     maxTurns: config.agentMaxTurns,
-    toolConcurrency: UNLOCK_TOOL_CONCURRENCY,
+    signal,
+    parallelToolCalls: false as const,
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new AgentTimeoutError()), timeoutMs)
-    promise.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (error) => {
-        clearTimeout(timer)
-        reject(error)
-      },
-    )
-  })
+export function isMaxTurnsExceeded(error: unknown) {
+  if (error instanceof AgentMaxTurnsError) {
+    return true
+  }
+  const text =
+    error instanceof Error ? `${error.name} ${error.message}` : String(error)
+  return /MaxTurnsExceeded/i.test(text)
 }
 
 function isTransientProviderError(error: unknown) {
   if (error instanceof AgentTimeoutError || error instanceof AgentProviderError) {
     return true
   }
+  if (isMaxTurnsExceeded(error) || error instanceof AgentProtocolError) {
+    return false
+  }
   const text =
     error instanceof Error ? `${error.name} ${error.message}` : String(error)
-  return /timeout|ECONNRESET|ENOTFOUND|429|503|502|unavailable|rate.?limit|MaxTurnsExceeded/i.test(
+  return /timeout|ECONNRESET|ENOTFOUND|429|503|502|unavailable|rate.?limit/i.test(
     text,
   )
+}
+
+function isAbortError(error: unknown) {
+  if (error instanceof AgentTimeoutError) {
+    return true
+  }
+  if (typeof error === 'object' && error !== null && 'name' in error) {
+    const name = String((error as { name: unknown }).name)
+    if (name === 'AbortError' || name === 'TimeoutError') {
+      return true
+    }
+  }
+  const text =
+    error instanceof Error ? `${error.name} ${error.message}` : String(error)
+  return /aborted|abort_error/i.test(text)
 }
 
 export function createSdkUnlockAgentRunner(config: AppConfig): UnlockAgentRunner {
@@ -101,27 +124,47 @@ export function createSdkUnlockAgentRunner(config: AppConfig): UnlockAgentRunner
         `Locale: ${context.request.locale}.`,
         'Call get_task_context first. Do not invent fields.',
       ].join(' ')
-      const options = unlockRunOptions(config, context)
+      const controller = new AbortController()
+      const options = unlockRunOptions(config, context, controller.signal)
+      let timer: ReturnType<typeof setTimeout> | undefined
+      let settled = false
+
+      const abortRun = () => {
+        context.cancelled = true
+        if (!controller.signal.aborted) {
+          controller.abort()
+        }
+      }
+
+      const sdkPromise = withTrace(
+        UNLOCK_WORKFLOW_NAME,
+        async () =>
+          runner.run(agent, userTurn, {
+            context: options.context,
+            maxTurns: options.maxTurns,
+            signal: options.signal,
+          }),
+        {
+          groupId: context.runId,
+          metadata: {
+            runId: context.runId,
+            promptVersion: config.openaiAgentPromptVersion,
+          },
+        },
+      )
 
       try {
-        const result = await withTimeout(
-          withTrace(
-            UNLOCK_WORKFLOW_NAME,
-            async () =>
-              runner.run(agent, userTurn, {
-                context: options.context,
-                maxTurns: options.maxTurns,
-              }),
-            {
-              groupId: context.runId,
-              metadata: {
-                runId: context.runId,
-                promptVersion: config.openaiAgentPromptVersion,
-              },
-            },
-          ),
-          config.agentTimeoutMs,
-        )
+        const timed = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            abortRun()
+            reject(new AgentTimeoutError())
+          }, config.agentTimeoutMs)
+        })
+
+        const result = await Promise.race([sdkPromise, timed])
+        if (context.cancelled || controller.signal.aborted) {
+          throw new AgentTimeoutError()
+        }
 
         const parsed = AgentOutputSchema.safeParse(result.finalOutput)
         if (!parsed.success) {
@@ -137,15 +180,19 @@ export function createSdkUnlockAgentRunner(config: AppConfig): UnlockAgentRunner
           { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
         )
 
+        settled = true
         return {
           output: parsed.data,
           usage: usage.totalTokens > 0 ? usage : undefined,
         }
       } catch (error) {
-        if (
-          error instanceof AgentTimeoutError ||
-          error instanceof AgentProtocolError
-        ) {
+        if (isAbortError(error) || context.cancelled) {
+          throw new AgentTimeoutError()
+        }
+        if (isMaxTurnsExceeded(error)) {
+          throw new AgentMaxTurnsError()
+        }
+        if (error instanceof AgentProtocolError) {
           throw error
         }
         if (isTransientProviderError(error)) {
@@ -156,6 +203,14 @@ export function createSdkUnlockAgentRunner(config: AppConfig): UnlockAgentRunner
         throw new AgentProtocolError(
           error instanceof Error ? error.name : 'invalid_agent_output',
         )
+      } finally {
+        if (timer) {
+          clearTimeout(timer)
+        }
+        if (!settled) {
+          abortRun()
+        }
+        void sdkPromise.catch(() => undefined)
       }
     },
   }

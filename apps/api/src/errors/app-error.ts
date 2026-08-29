@@ -53,6 +53,14 @@ export class AppError extends Error {
     return new AppError(502, 'BAD_GATEWAY', 'Upstream provider returned an invalid response')
   }
 
+  static maxTurnsExceeded() {
+    return new AppError(
+      502,
+      'AGENT_MAX_TURNS_EXCEEDED',
+      'The agent exceeded the maximum number of turns',
+    )
+  }
+
   static serviceUnavailable() {
     return new AppError(503, 'SERVICE_UNAVAILABLE', 'A required dependency is unavailable')
   }

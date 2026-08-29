@@ -30,18 +30,18 @@ export function buildFallbackPlan(request: UnlockTaskRunRequest): UnlockPlan {
 
   const first = localize(
     request.locale,
-    'Abrir o material e escrever o primeiro item visivel',
+    'Abrir o material e escrever o primeiro item visível',
     'Open the material and write the first visible item',
   )
   const second = localize(
     request.locale,
-    'Revisar o que foi escrito e marcar o proximo recorte',
+    'Revisar o que foi escrito e marcar o próximo recorte',
     'Review what you wrote and mark the next slice',
   )
   const nextAction = request.task.nextAction?.trim() || first
 
   return {
-    title: localize(request.locale, 'Comecar agora', 'Start now'),
+    title: localize(request.locale, 'Começar agora', 'Start now'),
     summary: localize(
       request.locale,
       'Dois passos curtos para sair da paralisia.',
@@ -57,7 +57,7 @@ export function buildFallbackPlan(request: UnlockTaskRunRequest): UnlockPlan {
     energy,
     supportiveMessage: localize(
       request.locale,
-      'Voce nao precisa terminar tudo. So precisa comecar.',
+      'Você não precisa terminar tudo. Só precisa começar.',
       'You do not need to finish everything. You only need to start.',
     ),
   }

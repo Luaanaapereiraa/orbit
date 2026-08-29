@@ -32,5 +32,5 @@ export function safetyRejectionMessage(locale: SupportedLocale) {
     return 'This does not look like a productivity request. If you are in danger, contact local emergency services or a trusted person nearby.'
   }
 
-  return 'Isso nao parece um pedido de produtividade. Se voce estiver em risco, procure ajuda local de emergencia ou alguem de confianca por perto.'
+  return 'Isso não parece um pedido de produtividade. Se você estiver em risco, procure ajuda local de emergência ou alguém de confiança por perto.'
 }

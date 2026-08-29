@@ -29,6 +29,11 @@
   "overrides": {
     "react": "$react",
     "react-dom": "$react-dom",
-    "zod": "3.25.76"
+    "@destravai/api": {
+      "zod": "3.25.76"
+    },
+    "@destravai/contracts": {
+      "zod": "3.25.76"
+    }
   }
 }

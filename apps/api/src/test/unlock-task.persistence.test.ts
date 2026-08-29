@@ -125,13 +125,19 @@ describe('unlock-task persistence', () => {
       runId: started.run.id,
       userId: USER,
       plan: validUnlockPlan(),
+      generationMode: 'agent',
     })
     const second = await repo.savePlan({
       runId: started.run.id,
       userId: USER,
       plan: validUnlockPlan({ title: 'Ignorado' }),
+      generationMode: 'agent',
     })
-    expect(first.planId).toBe(second.planId)
+    expect(first.kind).toBe('saved')
+    expect(second.kind).toBe('saved')
+    if (first.kind === 'saved' && second.kind === 'saved') {
+      expect(first.planId).toBe(second.planId)
+    }
     const stored = await repo.getPlanByRunId({
       runId: started.run.id,
       userId: USER,
@@ -155,6 +161,7 @@ describe('unlock-task persistence', () => {
       runId: started.run.id,
       userId: USER,
       plan: validUnlockPlan(),
+      generationMode: 'agent',
     })
     const leaked = await repo.getPlanByRunId({
       runId: started.run.id,
@@ -176,6 +183,7 @@ describe('unlock-task persistence', () => {
       resolve(process.cwd(), '../../supabase/migrations/20260828120000_agent_runs.sql'),
       resolve(process.cwd(), '../../supabase/migrations/20260828120100_unlock_plans.sql'),
       resolve(process.cwd(), '../../supabase/migrations/20260828180000_unlock_task_quota.sql'),
+      resolve(process.cwd(), '../../supabase/migrations/20260828220000_unlock_task_security.sql'),
     ]
     for (const file of files) {
       const source = readFileSync(file, 'utf8')

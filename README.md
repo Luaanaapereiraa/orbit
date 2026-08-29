@@ -74,7 +74,7 @@ Schemas Zod e tipos inferidos para HTTP (pedido/resposta do Unlock Task Run, err
 
 ### `supabase/`
 
-Migrations locais de `agent_runs`, `unlock_plans` e `agent_daily_usage` com RLS. Aplicar com a CLI do Supabase no ambiente local. `agent_runs` não guarda título da tarefa nem texto de bloqueio; `unlock_plans` guarda a sugestão gerada.
+Migrations locais de `agent_runs`, `unlock_plans`, `agent_daily_usage` e `agent_quota_settings` com RLS. Mutações só via RPC `SECURITY DEFINER`. Aplicar com a CLI do Supabase no ambiente local. `agent_runs` não guarda título da tarefa nem texto de bloqueio; `unlock_plans` guarda a sugestão gerada.
 
 ## Requisitos
 

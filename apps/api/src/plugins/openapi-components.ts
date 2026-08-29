@@ -111,6 +111,61 @@ export const openApiComponents = {
     ApiErrorResponse: apiErrorResponse,
     MeResponse: meResponse,
     UnlockPlan: unlockPlan,
+    UnlockTaskRunCompleted: {
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'runId',
+        'status',
+        'plan',
+        'promptVersion',
+        'generationMode',
+        'createdAt',
+      ],
+      properties: {
+        runId: { type: 'string', format: 'uuid' },
+        status: { type: 'string', enum: ['completed'] },
+        plan: unlockPlan,
+        promptVersion: { type: 'string' },
+        generationMode: { type: 'string', enum: ['agent', 'fallback'] },
+        createdAt: { type: 'string', format: 'date-time' },
+      },
+    },
+    UnlockTaskRunNeedsClarification: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['runId', 'status', 'question', 'promptVersion', 'createdAt'],
+      properties: {
+        runId: { type: 'string', format: 'uuid' },
+        status: { type: 'string', enum: ['needs_clarification'] },
+        question: { type: 'string' },
+        promptVersion: { type: 'string' },
+        createdAt: { type: 'string', format: 'date-time' },
+      },
+    },
+    UnlockTaskRunRejected: {
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'runId',
+        'status',
+        'reason',
+        'message',
+        'promptVersion',
+        'createdAt',
+      ],
+      properties: {
+        runId: { type: 'string', format: 'uuid' },
+        status: { type: 'string', enum: ['rejected'] },
+        reason: {
+          type: 'string',
+          enum: ['safety', 'unsafe_input', 'unsupported_request'],
+        },
+        message: { type: 'string' },
+        promptVersion: { type: 'string' },
+        createdAt: { type: 'string', format: 'date-time' },
+      },
+    },
     UnlockTaskRunRequest: {
       type: 'object',
       additionalProperties: false,
@@ -190,68 +245,10 @@ export const openApiComponents = {
       },
     },
     UnlockTaskRunResponse: {
-      oneOf: [
-        {
-          type: 'object',
-          additionalProperties: false,
-          required: [
-            'runId',
-            'status',
-            'plan',
-            'promptVersion',
-            'generationMode',
-            'createdAt',
-          ],
-          properties: {
-            runId: { type: 'string', format: 'uuid' },
-            status: { type: 'string', enum: ['completed'] },
-            plan: unlockPlan,
-            promptVersion: { type: 'string' },
-            generationMode: { type: 'string', enum: ['agent', 'fallback'] },
-            createdAt: { type: 'string', format: 'date-time' },
-          },
-        },
-        {
-          type: 'object',
-          additionalProperties: false,
-          required: [
-            'runId',
-            'status',
-            'question',
-            'promptVersion',
-            'createdAt',
-          ],
-          properties: {
-            runId: { type: 'string', format: 'uuid' },
-            status: { type: 'string', enum: ['needs_clarification'] },
-            question: { type: 'string' },
-            promptVersion: { type: 'string' },
-            createdAt: { type: 'string', format: 'date-time' },
-          },
-        },
-        {
-          type: 'object',
-          additionalProperties: false,
-          required: [
-            'runId',
-            'status',
-            'reason',
-            'message',
-            'promptVersion',
-            'createdAt',
-          ],
-          properties: {
-            runId: { type: 'string', format: 'uuid' },
-            status: { type: 'string', enum: ['rejected'] },
-            reason: {
-              type: 'string',
-              enum: ['safety', 'unsafe_input', 'unsupported_request'],
-            },
-            message: { type: 'string' },
-            promptVersion: { type: 'string' },
-            createdAt: { type: 'string', format: 'date-time' },
-          },
-        },
+      anyOf: [
+        { $ref: '#/components/schemas/UnlockTaskRunCompleted' },
+        { $ref: '#/components/schemas/UnlockTaskRunNeedsClarification' },
+        { $ref: '#/components/schemas/UnlockTaskRunRejected' },
       ],
     },
   },
@@ -262,5 +259,16 @@ export const apiErrorResponseSchema = apiErrorResponse
 export const meResponseSchema = meResponse
 export const unlockTaskRunRequestSchema =
   openApiComponents.schemas.UnlockTaskRunRequest
-export const unlockTaskRunResponseSchema =
-  openApiComponents.schemas.UnlockTaskRunResponse
+export const unlockTaskRunCompletedSchema =
+  openApiComponents.schemas.UnlockTaskRunCompleted
+export const unlockTaskRunNeedsClarificationSchema =
+  openApiComponents.schemas.UnlockTaskRunNeedsClarification
+export const unlockTaskRunRejectedSchema =
+  openApiComponents.schemas.UnlockTaskRunRejected
+export const unlockTaskRunResponseSchema = {
+  anyOf: [
+    unlockTaskRunCompletedSchema,
+    unlockTaskRunNeedsClarificationSchema,
+    unlockTaskRunRejectedSchema,
+  ],
+}

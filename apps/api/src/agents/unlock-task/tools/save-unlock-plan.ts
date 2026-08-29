@@ -6,7 +6,15 @@ import { validateUnlockPlanDeterministic } from './validate-unlock-plan.js'
 export async function saveValidatedUnlockPlan(
   context: UnlockRunContext,
   plan: UnlockPlan,
+  generationMode: 'agent' | 'fallback' = 'agent',
 ) {
+  if (generationMode === 'agent' && context.cancelled) {
+    return {
+      saved: false as const,
+      error: 'cancelled',
+    }
+  }
+
   if (!context.taskContextRead) {
     return {
       saved: false as const,
@@ -43,11 +51,26 @@ export async function saveValidatedUnlockPlan(
     }
   }
 
+  if (generationMode === 'agent' && context.cancelled) {
+    return {
+      saved: false as const,
+      error: 'cancelled',
+    }
+  }
+
   const saved = await context.repository.savePlan({
     runId: context.runId,
     userId: context.userId,
     plan,
+    generationMode,
   })
+
+  if (saved.kind === 'rejected') {
+    return {
+      saved: false as const,
+      error: saved.reason,
+    }
+  }
 
   context.savedPlanId = saved.planId
   context.protocol.push('save_unlock_plan')
@@ -56,5 +79,6 @@ export async function saveValidatedUnlockPlan(
     saved: true as const,
     planId: saved.planId,
     runId: context.runId,
+    plan: saved.plan,
   }
 }

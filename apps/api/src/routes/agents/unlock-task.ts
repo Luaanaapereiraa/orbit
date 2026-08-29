@@ -11,6 +11,7 @@ import { parseUnlockTaskRunRequest, zodDetails } from '../../errors/validation.j
 import {
   apiErrorResponseSchema,
   unlockTaskRunRequestSchema,
+  unlockTaskRunResponseSchema,
 } from '../../plugins/openapi-components.js'
 
 export async function registerUnlockTaskRoute(app: FastifyInstance) {
@@ -24,7 +25,7 @@ export async function registerUnlockTaskRoute(app: FastifyInstance) {
         security: [{ bearerAuth: [] }],
         body: unlockTaskRunRequestSchema,
         response: {
-          200: { type: 'object', additionalProperties: true },
+          200: unlockTaskRunResponseSchema,
           400: apiErrorResponseSchema,
           401: apiErrorResponseSchema,
           409: apiErrorResponseSchema,

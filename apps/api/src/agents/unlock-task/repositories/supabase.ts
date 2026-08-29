@@ -8,9 +8,12 @@ import type { AppConfig } from '../../../config/env.js'
 import type {
   AgentRunRecord,
   AgentRunRepository,
+  BeginFallbackResult,
   FinishUnlockRunInput,
+  SaveUnlockPlanResult,
   StartUnlockRunResult,
 } from './types.js'
+import { InvalidRunTransitionError } from './types.js'
 
 function mapRun(row: Record<string, unknown>): AgentRunRecord {
   const response = row.result_payload
@@ -33,6 +36,7 @@ function mapRun(row: Record<string, unknown>): AgentRunRecord {
     errorCode: (row.error_code as string | null) ?? null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+    leaseExpiresAt: row.lease_expires_at ? String(row.lease_expires_at) : null,
     response,
   }
 }
@@ -48,6 +52,13 @@ function planFromRow(row: Record<string, unknown>): UnlockPlan {
     energy: row.energy,
     supportiveMessage: row.supportive_message,
   })
+}
+
+function planFromRpc(row: Record<string, unknown> | null): UnlockPlan | null {
+  if (!row) {
+    return null
+  }
+  return planFromRow(row)
 }
 
 export function createSupabaseUserClient(
@@ -72,14 +83,14 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
     clientRequestId: string
     blockageReason: string
     promptVersion: string
-    dailyLimit: number
+    dailyLimit?: number
   }): Promise<StartUnlockRunResult> {
+    void input.userId
+    void input.dailyLimit
     const { data, error } = await this.client.rpc('start_unlock_agent_run', {
-      p_user_id: input.userId,
       p_client_request_id: input.clientRequestId,
       p_blockage_reason: input.blockageReason,
       p_prompt_version: input.promptVersion,
-      p_daily_limit: input.dailyLimit,
     })
 
     if (error) {
@@ -107,46 +118,90 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
     runId: string
     userId: string
     plan: UnlockPlan
-  }) {
-    const existing = await this.getPlanByRunId(input)
-    if (existing) {
-      return { planId: existing.planId, runId: input.runId }
-    }
-
-    const { data, error } = await this.client
-      .from('unlock_plans')
-      .insert({
-        run_id: input.runId,
-        user_id: input.userId,
-        title: input.plan.title,
-        summary: input.plan.summary,
-        next_action: input.plan.nextAction,
-        steps: input.plan.steps,
-        total_minutes: input.plan.totalMinutes,
-        recommended_focus_minutes: input.plan.recommendedFocusMinutes,
-        energy: input.plan.energy,
-        supportive_message: input.plan.supportiveMessage,
-      })
-      .select('id')
-      .single()
+    generationMode: 'agent' | 'fallback'
+  }): Promise<SaveUnlockPlanResult> {
+    void input.userId
+    const { data, error } = await this.client.rpc('save_unlock_agent_plan', {
+      p_run_id: input.runId,
+      p_plan: input.plan,
+      p_generation_mode: input.generationMode,
+    })
 
     if (error) {
-      if (error.code === '23505') {
-        const raced = await this.getPlanByRunId(input)
-        if (raced) {
-          return { planId: raced.planId, runId: input.runId }
-        }
-      }
       throw error
     }
 
-    return { planId: String(data.id), runId: input.runId }
+    const payload = data as {
+      kind: string
+      reason?: string
+      plan_id?: string
+      run_id?: string
+      plan?: Record<string, unknown>
+    }
+
+    if (payload.kind === 'rejected') {
+      return {
+        kind: 'rejected',
+        reason:
+          payload.reason === 'not_fallback_pending'
+            ? 'not_fallback_pending'
+            : 'not_running',
+      }
+    }
+
+    if (payload.kind !== 'saved' || !payload.plan_id || !payload.plan) {
+      throw new Error('invalid_save_payload')
+    }
+
+    return {
+      kind: 'saved',
+      planId: String(payload.plan_id),
+      runId: String(payload.run_id ?? input.runId),
+      plan: planFromRow(payload.plan),
+    }
+  }
+
+  async beginFallback(input: {
+    runId: string
+    userId: string
+  }): Promise<BeginFallbackResult> {
+    void input.userId
+    const { data, error } = await this.client.rpc('begin_unlock_fallback', {
+      p_run_id: input.runId,
+    })
+
+    if (error) {
+      throw error
+    }
+
+    const payload = data as {
+      kind: string
+      run?: Record<string, unknown>
+      plan?: Record<string, unknown> | null
+    }
+
+    if (!payload.run) {
+      throw new Error('invalid_fallback_payload')
+    }
+
+    const run = mapRun(payload.run)
+    const plan = planFromRpc(payload.plan ?? null)
+
+    if (payload.kind === 'timeout_won') {
+      return { kind: 'timeout_won', run }
+    }
+    if (payload.kind === 'agent_won' && plan) {
+      return { kind: 'agent_won', run, plan }
+    }
+    if (payload.kind === 'already_terminal') {
+      return { kind: 'already_terminal', run, plan }
+    }
+    return { kind: 'incompatible', run }
   }
 
   async finishRun(input: FinishUnlockRunInput): Promise<AgentRunRecord> {
     const { data, error } = await this.client.rpc('finish_unlock_agent_run', {
       p_run_id: input.runId,
-      p_user_id: input.userId,
       p_status: input.status,
       p_prompt_version: input.promptVersion,
       p_result_payload: input.response,
@@ -160,8 +215,14 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
       p_plan: input.plan ?? null,
     })
 
-    if (error || !data) {
-      throw error ?? new Error('finish_failed')
+    if (error) {
+      if (error.message?.includes('invalid run transition')) {
+        throw new InvalidRunTransitionError()
+      }
+      throw error
+    }
+    if (!data) {
+      throw new Error('finish_failed')
     }
 
     return mapRun(data as Record<string, unknown>)
@@ -186,5 +247,22 @@ export class SupabaseAgentRunRepository implements AgentRunRepository {
       planId: String(data.id),
       plan: planFromRow(data as Record<string, unknown>),
     }
+  }
+
+  async getRun(input: { runId: string; userId: string }) {
+    const { data, error } = await this.client
+      .from('agent_runs')
+      .select('*')
+      .eq('id', input.runId)
+      .eq('user_id', input.userId)
+      .maybeSingle()
+
+    if (error) {
+      throw error
+    }
+    if (!data) {
+      return null
+    }
+    return mapRun(data as Record<string, unknown>)
   }
 }

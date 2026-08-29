@@ -91,5 +91,11 @@ describe('unlock-task evals and source guards', () => {
       request: validUnlockRequest(),
       repository: new MemoryAgentRunRepository(),
     })).maxTurns).toBe(8)
+    expect(unlockRunOptions(testConfig(), createUnlockRunContext({
+      runId: 'run',
+      userId: 'user',
+      request: validUnlockRequest(),
+      repository: new MemoryAgentRunRepository(),
+    })).parallelToolCalls).toBe(false)
   })
 })

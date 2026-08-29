@@ -52,6 +52,7 @@ export interface AppConfig {
   agentTimeoutMs: number
   agentMaxTurns: number
   agentDailyLimit: number
+  agentLeaseMs: number
   agentRepository: 'supabase' | 'memory'
   runLiveAgentTests: boolean
 }
@@ -104,6 +105,10 @@ const EnvSchema = z.object({
   AGENT_DAILY_LIMIT: z.preprocess(
     (value) => (value === undefined || value === '' ? 5 : value),
     z.coerce.number().int().min(1).max(100),
+  ),
+  AGENT_LEASE_MS: z.preprocess(
+    (value) => (value === undefined || value === '' ? 90000 : value),
+    z.coerce.number().int().min(5000).max(600000),
   ),
   AGENT_REPOSITORY: z.enum(['supabase', 'memory']).optional(),
   RUN_LIVE_AGENT_TESTS: z.preprocess(
@@ -234,6 +239,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     agentTimeoutMs: parsed.AGENT_TIMEOUT_MS,
     agentMaxTurns: parsed.AGENT_MAX_TURNS,
     agentDailyLimit: parsed.AGENT_DAILY_LIMIT,
+    agentLeaseMs: parsed.AGENT_LEASE_MS,
     agentRepository,
     runLiveAgentTests: parsed.RUN_LIVE_AGENT_TESTS,
   }

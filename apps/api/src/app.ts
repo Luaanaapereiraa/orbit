@@ -76,6 +76,9 @@ export async function buildApp(
   app.setValidatorCompiler(() => {
     return (data: unknown) => ({ value: data })
   })
+  app.setSerializerCompiler(() => {
+    return (data: unknown) => JSON.stringify(data)
+  })
 
   app.decorate('appConfig', config)
   app.decorate(
@@ -99,7 +102,13 @@ export async function buildApp(
     app.decorate('unlockRepositoryFactory', options.unlockRepositoryFactory)
   }
   if (config.agentRepository === 'memory') {
-    app.decorate('memoryAgentRepository', new MemoryAgentRunRepository())
+    app.decorate(
+      'memoryAgentRepository',
+      new MemoryAgentRunRepository(() => new Date(), {
+        dailyLimit: config.agentDailyLimit,
+        leaseMs: config.agentLeaseMs,
+      }),
+    )
   }
   registerErrorHandlers(app)
 

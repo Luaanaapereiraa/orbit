@@ -4,17 +4,20 @@ import type {
   UnlockTaskRunResponse,
 } from '@destravai/contracts'
 
+export type AgentRunStatus =
+  | 'pending'
+  | 'running'
+  | 'fallback_pending'
+  | 'completed'
+  | 'needs_clarification'
+  | 'rejected'
+  | 'failed'
+
 export interface AgentRunRecord {
   id: string
   userId: string
   clientRequestId: string
-  status:
-    | 'pending'
-    | 'running'
-    | 'completed'
-    | 'needs_clarification'
-    | 'rejected'
-    | 'failed'
+  status: AgentRunStatus
   blockageReason: string | null
   promptVersion: string | null
   model: string | null
@@ -26,6 +29,7 @@ export interface AgentRunRecord {
   errorCode: string | null
   createdAt: string
   updatedAt: string
+  leaseExpiresAt: string | null
   response: UnlockTaskRunResponse | null
 }
 
@@ -35,10 +39,20 @@ export type StartUnlockRunResult =
   | { kind: 'in_progress'; run: AgentRunRecord }
   | { kind: 'quota_exceeded' }
 
+export type SaveUnlockPlanResult =
+  | { kind: 'saved'; planId: string; runId: string; plan: UnlockPlan }
+  | { kind: 'rejected'; reason: 'not_running' | 'not_fallback_pending' }
+
+export type BeginFallbackResult =
+  | { kind: 'timeout_won'; run: AgentRunRecord }
+  | { kind: 'agent_won'; run: AgentRunRecord; plan: UnlockPlan }
+  | { kind: 'already_terminal'; run: AgentRunRecord; plan: UnlockPlan | null }
+  | { kind: 'incompatible'; run: AgentRunRecord }
+
 export interface FinishUnlockRunInput {
   runId: string
   userId: string
-  status: UnlockTaskRunResponse['status'] | 'failed'
+  status: UnlockTaskRunResponse['status'] | 'failed' | 'fallback_pending'
   response: UnlockTaskRunResponse | null
   plan?: UnlockPlan
   generationMode?: 'agent' | 'fallback' | null
@@ -51,22 +65,35 @@ export interface FinishUnlockRunInput {
   promptVersion: string
 }
 
+export class InvalidRunTransitionError extends Error {
+  constructor() {
+    super('invalid_run_transition')
+    this.name = 'InvalidRunTransitionError'
+  }
+}
+
 export interface AgentRunRepository {
   startRun(input: {
     userId: string
     clientRequestId: string
     blockageReason: UnlockTaskRunRequest['blockageReason']
     promptVersion: string
-    dailyLimit: number
+    dailyLimit?: number
   }): Promise<StartUnlockRunResult>
   savePlan(input: {
     runId: string
     userId: string
     plan: UnlockPlan
-  }): Promise<{ planId: string; runId: string }>
+    generationMode: 'agent' | 'fallback'
+  }): Promise<SaveUnlockPlanResult>
+  beginFallback(input: {
+    runId: string
+    userId: string
+  }): Promise<BeginFallbackResult>
   finishRun(input: FinishUnlockRunInput): Promise<AgentRunRecord>
   getPlanByRunId(input: {
     runId: string
     userId: string
   }): Promise<{ planId: string; plan: UnlockPlan } | null>
+  getRun(input: { runId: string; userId: string }): Promise<AgentRunRecord | null>
 }

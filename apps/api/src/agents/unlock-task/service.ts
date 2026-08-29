@@ -15,8 +15,12 @@ import {
   type ContentModerator,
 } from './guardrails/input.js'
 import { inspectCompletedPlan } from './guardrails/output.js'
-import type { AgentRunRepository } from './repositories/types.js'
 import {
+  InvalidRunTransitionError,
+  type AgentRunRepository,
+} from './repositories/types.js'
+import {
+  AgentMaxTurnsError,
   AgentProviderError,
   AgentProtocolError,
   AgentTimeoutError,
@@ -41,6 +45,25 @@ export interface UnlockTaskServiceDeps {
 function isRecoverableProviderError(error: unknown) {
   return error instanceof AgentTimeoutError || error instanceof AgentProviderError
 }
+
+type AgentOutcome =
+  | {
+      kind: 'generated'
+      output: {
+        status: UnlockTaskRunResponse['status']
+        plan?: UnlockPlan
+        question?: string
+        reason?: 'safety' | 'unsafe_input' | 'unsupported_request'
+        message?: string
+      }
+      generationMode: 'agent' | 'fallback'
+      usage?: {
+        inputTokens?: number
+        outputTokens?: number
+        totalTokens?: number
+      }
+    }
+  | { kind: 'persisted'; response: UnlockTaskRunResponse }
 
 export class UnlockTaskService {
   private readonly moderator: ContentModerator
@@ -110,10 +133,19 @@ export class UnlockTaskService {
 
     try {
       const result = await this.runAgentOrFallback(context)
-      const latencyMs = Math.max(0, this.clock().getTime() - started.getTime())
-      const response = this.toResponse(context, result.output, result.generationMode, latencyMs)
+      if (result.kind === 'persisted') {
+        return result.response
+      }
 
-      await this.deps.repository.finishRun({
+      const latencyMs = Math.max(0, this.clock().getTime() - started.getTime())
+      const response = this.toResponse(
+        context,
+        result.output,
+        result.generationMode,
+        latencyMs,
+      )
+
+      const finished = await this.deps.repository.finishRun({
         runId: run.id,
         userId: input.userId,
         status: response.status,
@@ -129,31 +161,48 @@ export class UnlockTaskService {
         promptVersion,
       })
 
+      const confirmed =
+        finished.response ??
+        (await this.confirmPersistedResponse(context, response))
+
       this.deps.log?.info(
         {
           requestId: input.requestId,
           runId: run.id,
-          status: response.status,
+          status: confirmed.status,
           latencyMs,
-          generationMode: result.generationMode,
+          generationMode:
+            confirmed.status === 'completed' ? confirmed.generationMode : result.generationMode,
         },
         'unlock-task finished',
       )
 
-      return response
+      return confirmed
     } catch (error) {
       const errorCode =
         error instanceof AppError ? error.code : 'INTERNAL_ERROR'
 
-      await this.deps.repository.finishRun({
-        runId: run.id,
-        userId: input.userId,
-        status: 'failed',
-        response: null,
-        errorCode,
-        promptVersion,
-        latencyMs: Math.max(0, this.clock().getTime() - started.getTime()),
-      })
+      try {
+        await this.deps.repository.finishRun({
+          runId: run.id,
+          userId: input.userId,
+          status: 'failed',
+          response: null,
+          errorCode,
+          promptVersion,
+          latencyMs: Math.max(0, this.clock().getTime() - started.getTime()),
+        })
+      } catch (finishError) {
+        if (finishError instanceof InvalidRunTransitionError) {
+          const current = await this.deps.repository.getRun({
+            runId: run.id,
+            userId: input.userId,
+          })
+          if (current?.response) {
+            return UnlockTaskRunResponseSchema.parse(current.response)
+          }
+        }
+      }
 
       if (error instanceof AppError) {
         throw error
@@ -161,6 +210,26 @@ export class UnlockTaskService {
 
       throw error
     }
+  }
+
+  private async confirmPersistedResponse(
+    context: ReturnType<typeof createUnlockRunContext>,
+    response: UnlockTaskRunResponse,
+  ) {
+    if (response.status !== 'completed') {
+      return response
+    }
+    const stored = await context.repository.getPlanByRunId({
+      runId: context.runId,
+      userId: context.userId,
+    })
+    if (!stored) {
+      return response
+    }
+    return UnlockTaskRunResponseSchema.parse({
+      ...response,
+      plan: stored.plan,
+    })
   }
 
   private async inspectSafety(request: UnlockTaskRunRequest) {
@@ -178,7 +247,9 @@ export class UnlockTaskService {
     }
   }
 
-  private async runAgentOrFallback(context: ReturnType<typeof createUnlockRunContext>) {
+  private async runAgentOrFallback(
+    context: ReturnType<typeof createUnlockRunContext>,
+  ): Promise<AgentOutcome> {
     try {
       const result = await this.deps.runner.run(context)
       if (result.output.status === 'completed') {
@@ -187,10 +258,13 @@ export class UnlockTaskService {
           throw AppError.badGateway()
         }
       }
-      return { ...result, generationMode: 'agent' as const }
+      return { kind: 'generated', ...result, generationMode: 'agent' }
     } catch (error) {
       if (error instanceof AppError) {
         throw error
+      }
+      if (error instanceof AgentMaxTurnsError) {
+        throw AppError.maxTurnsExceeded()
       }
       if (error instanceof AgentProtocolError) {
         throw AppError.badGateway()
@@ -199,27 +273,66 @@ export class UnlockTaskService {
         throw AppError.badGateway()
       }
 
-      const alreadySaved = await context.repository.getPlanByRunId({
+      return this.resolveTimeoutOrProvider(context, error)
+    }
+  }
+
+  private async resolveTimeoutOrProvider(
+    context: ReturnType<typeof createUnlockRunContext>,
+    error: unknown,
+  ): Promise<AgentOutcome> {
+    let arbitration
+    try {
+      arbitration = await context.repository.beginFallback({
         runId: context.runId,
         userId: context.userId,
       })
-      if (alreadySaved) {
+    } catch {
+      throw AppError.badGateway()
+    }
+
+    if (arbitration.kind === 'already_terminal' && arbitration.run.response) {
+      return {
+        kind: 'persisted',
+        response: UnlockTaskRunResponseSchema.parse(arbitration.run.response),
+      }
+    }
+
+    if (arbitration.kind === 'agent_won' || (arbitration.kind === 'already_terminal' && arbitration.plan)) {
+      const plan =
+        arbitration.kind === 'agent_won' ? arbitration.plan : arbitration.plan
+      if (!plan) {
         throw AppError.badGateway()
       }
-
-      try {
-        const plan = await this.persistFallback(context)
       return {
-        output: { status: 'completed' as const, plan },
-        generationMode: 'fallback' as const,
+        kind: 'generated',
+        output: { status: 'completed', plan },
+        generationMode: arbitration.run.generationMode ?? 'agent',
+      }
+    }
+
+    if (arbitration.kind !== 'timeout_won') {
+      throw AppError.badGateway()
+    }
+
+    try {
+      const plan = await this.persistFallback(context)
+      const stored = await context.repository.getPlanByRunId({
+        runId: context.runId,
+        userId: context.userId,
+      })
+      const confirmed = stored?.plan ?? plan
+      return {
+        kind: 'generated',
+        output: { status: 'completed', plan: confirmed },
+        generationMode: 'fallback',
         usage: undefined,
       }
-      } catch {
-        if (error instanceof AgentTimeoutError) {
-          throw AppError.gatewayTimeout()
-        }
-        throw AppError.serviceUnavailable()
+    } catch {
+      if (error instanceof AgentTimeoutError) {
+        throw AppError.gatewayTimeout()
       }
+      throw AppError.serviceUnavailable()
     }
   }
 
@@ -235,11 +348,11 @@ export class UnlockTaskService {
     if (!validated.valid) {
       throw AppError.internal()
     }
-    const saved = await saveValidatedUnlockPlan(context, plan)
+    const saved = await saveValidatedUnlockPlan(context, plan, 'fallback')
     if (!saved.saved) {
       throw AppError.internal()
     }
-    return plan
+    return saved.plan
   }
 
   private toResponse(
