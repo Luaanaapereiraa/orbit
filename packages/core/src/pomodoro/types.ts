@@ -73,6 +73,7 @@ export const ActionTypes = {
   UPDATE_TASK_NEXT_ACTION: 'UPDATE_TASK_NEXT_ACTION',
   UPDATE_TASK_ESTIMATED_MINUTES: 'UPDATE_TASK_ESTIMATED_MINUTES',
   UPDATE_TASK_ENERGY: 'UPDATE_TASK_ENERGY',
+  APPLY_UNLOCK_PLAN: 'APPLY_UNLOCK_PLAN',
   MOVE_TASK_TO_INBOX: 'MOVE_TASK_TO_INBOX',
   MOVE_TASK_TO_ACTIVE: 'MOVE_TASK_TO_ACTIVE',
   REORDER_TASKS: 'REORDER_TASKS',
@@ -130,6 +131,16 @@ export type PomodoroAction =
   | {
       type: typeof ActionTypes.UPDATE_TASK_ENERGY
       payload: { taskId: string; energy: TaskEnergy | null; now: string }
+    }
+  | {
+      type: typeof ActionTypes.APPLY_UNLOCK_PLAN
+      payload: {
+        taskId: string
+        nextAction: string
+        estimatedMinutes: number
+        energy: TaskEnergy
+        now: string
+      }
     }
   | {
       type: typeof ActionTypes.MOVE_TASK_TO_INBOX

@@ -13,6 +13,7 @@ import {
 } from 'react'
 import {
   addDailyPlanSecondaryAction,
+  applyUnlockPlanToTaskAction,
   addNewCycleAction,
   addTaskAction,
   archiveTaskAction,
@@ -101,6 +102,12 @@ interface PomodoroContextType {
     taskId: string,
     estimatedMinutes: number | null,
   ) => void
+  applyUnlockPlan: (input: {
+    taskId: string
+    nextAction: string
+    estimatedMinutes: number
+    energy: TaskEnergy
+  }) => void
   moveTaskToActive: (taskId: string) => void
   setDailyPlanEssential: (dateKey: string, taskId: string | null) => void
   addDailyPlanSecondary: (dateKey: string, taskId: string) => void

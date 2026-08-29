@@ -110,6 +110,19 @@ export function updateTaskEnergyAction(
   }
 }
 
+export function applyUnlockPlanToTaskAction(input: {
+  taskId: string
+  nextAction: string
+  estimatedMinutes: number
+  energy: TaskEnergy
+  now: string
+}): PomodoroAction {
+  return {
+    type: ActionTypes.APPLY_UNLOCK_PLAN,
+    payload: input,
+  }
+}
+
 export function moveTaskToInboxAction(
   taskId: string,
   now: string,

@@ -1,10 +1,3 @@
-export function readPublicApiUrl() {
-  return (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333').replace(
-    /\/$/,
-    '',
-  )
-}
-
 export function readPublicSupabaseUrl() {
   return (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
 }

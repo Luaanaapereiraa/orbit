@@ -6,8 +6,10 @@ import { cn } from '../../lib/cn'
 interface DialogProps {
   open: boolean
   title: string
+  description?: string
   onClose: () => void
   children: ReactNode
+  footer?: ReactNode
   className?: string
   initialFocusRef?: RefObject<{ focus: () => void } | null>
 }
@@ -15,13 +17,16 @@ interface DialogProps {
 export function Dialog({
   open,
   title,
+  description,
   onClose,
   children,
+  footer,
   className,
   initialFocusRef,
 }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
+  const descriptionId = useId()
 
   useEffect(() => {
     const node = dialogRef.current
@@ -66,34 +71,52 @@ export function Dialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      aria-describedby={description ? descriptionId : undefined}
       onClose={onClose}
       onCancel={(event) => {
         event.preventDefault()
         onClose()
       }}
       className={cn(
-        'w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-panel p-0 text-ink shadow-xl backdrop:bg-ink/40 dark:border-line-dark dark:bg-panel-dark dark:text-ink-dark',
+        'm-auto w-[min(36rem,calc(100vw-2rem))] rounded-2xl border border-line bg-panel p-0 text-ink shadow-xl backdrop:bg-ink/40 dark:border-line-dark dark:bg-panel-dark dark:text-ink-dark',
+        'max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:mb-0 max-md:w-full max-md:max-w-none max-md:rounded-t-3xl max-md:rounded-b-none',
         className,
       )}
     >
       <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 dark:border-line-dark">
-        <h2 id={titleId} className="text-lg font-bold">
-          {title}
-        </h2>
+        <div>
+          <h2 id={titleId} className="text-lg font-bold">
+            {title}
+          </h2>
+          {description ? (
+            <p
+              id={descriptionId}
+              className="mt-1 text-sm text-muted dark:text-muted-dark"
+            >
+              {description}
+            </p>
+          ) : null}
+        </div>
         <button
           type="button"
           onClick={onClose}
-          className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition hover:bg-line hover:text-ink focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none dark:text-muted-dark dark:hover:bg-line-dark dark:hover:text-ink-dark"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-line hover:text-ink focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none dark:text-muted-dark dark:hover:bg-line-dark dark:hover:text-ink-dark"
           aria-label="Fechar"
         >
           ×
         </button>
       </div>
-      <div className="max-h-[min(70vh,36rem)] overflow-y-auto px-5 py-4">
+      <div className="max-h-[min(70vh,36rem)] overflow-y-auto overflow-x-hidden px-5 py-4">
         {children}
       </div>
+      {footer ? (
+        <div className="sticky bottom-0 border-t border-line bg-panel px-5 py-4 dark:border-line-dark dark:bg-panel-dark">
+          {footer}
+        </div>
+      ) : null}
     </dialog>
   )
 }

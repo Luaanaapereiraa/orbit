@@ -19,6 +19,7 @@ export {
   addDailyPlanSecondaryAction,
   addNewCycleAction,
   addTaskAction,
+  applyUnlockPlanToTaskAction,
   archiveTaskAction,
   clearHistoryAction,
   clearInvalidPlanReferencesAction,
@@ -49,6 +50,7 @@ export type { TimedCycle } from './time'
 export { focusedMinutesOf } from './stats'
 export { getNextBreakType } from './cycle-flow'
 export {
+  applyUnlockPlanToTask,
   buildTask,
   migrateLegacyTask,
   migrateLegacyTasks,

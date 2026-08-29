@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addTaskToList,
+  applyUnlockPlanToTask,
   archiveTaskInList,
   buildTask,
   completeTaskInList,
@@ -76,6 +77,82 @@ describe('task field updates', () => {
     expect(updateTaskEstimatedMinutes(tasks, task.id, 0, LATER)).toBe(tasks)
     expect(updateTaskEstimatedMinutes(tasks, task.id, -10, LATER)).toBe(tasks)
     expect(updateTaskEstimatedMinutes(tasks, task.id, 1.5, LATER)).toBe(tasks)
+  })
+})
+
+describe('applyUnlockPlanToTask', () => {
+  const plan = {
+    nextAction: ' Abrir o arquivo ',
+    estimatedMinutes: 20,
+    energy: 'medium' as const,
+    now: LATER,
+  }
+
+  it('updates next action, estimate and energy without changing status or title', () => {
+    const inbox = makeTask({
+      status: 'inbox',
+      title: 'Escrever o parágrafo',
+      nextAction: null,
+    })
+    const next = applyUnlockPlanToTask([inbox], {
+      taskId: inbox.id,
+      ...plan,
+    })
+
+    expect(next[0]).toMatchObject({
+      title: 'Escrever o parágrafo',
+      status: 'inbox',
+      nextAction: 'Abrir o arquivo',
+      estimatedMinutes: 20,
+      energy: 'medium',
+      updatedAt: LATER,
+      completedAt: null,
+    })
+  })
+
+  it('rejects missing, done or archived tasks', () => {
+    const active = makeTask({ id: 'active-1' })
+    const done = makeTask({
+      id: 'done-1',
+      status: 'done',
+      completedAt: NOW,
+    })
+    const archived = makeTask({ id: 'arch-1', status: 'archived' })
+    const tasks = [active, done, archived]
+
+    expect(
+      applyUnlockPlanToTask(tasks, { taskId: 'missing', ...plan }),
+    ).toBe(tasks)
+    expect(
+      applyUnlockPlanToTask(tasks, { taskId: done.id, ...plan }),
+    ).toBe(tasks)
+    expect(
+      applyUnlockPlanToTask(tasks, { taskId: archived.id, ...plan }),
+    ).toBe(tasks)
+  })
+
+  it('rejects an empty next action or invalid estimate', () => {
+    const task = makeTask()
+    const tasks = [task]
+
+    expect(
+      applyUnlockPlanToTask(tasks, {
+        taskId: task.id,
+        nextAction: '   ',
+        estimatedMinutes: 20,
+        energy: 'low',
+        now: LATER,
+      }),
+    ).toBe(tasks)
+    expect(
+      applyUnlockPlanToTask(tasks, {
+        taskId: task.id,
+        nextAction: 'Começar',
+        estimatedMinutes: 0,
+        energy: 'low',
+        now: LATER,
+      }),
+    ).toBe(tasks)
   })
 })
 

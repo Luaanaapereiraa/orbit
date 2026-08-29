@@ -3,6 +3,7 @@ import {
   addDailyPlanSecondaryAction,
   addNewCycleAction,
   addTaskAction,
+  applyUnlockPlanToTaskAction,
   archiveTaskAction,
   clearHistoryAction,
   clearInvalidPlanReferencesAction,
@@ -219,6 +220,71 @@ describe('task and daily plan actions', () => {
 
     expect(result.tasks[0].title).toBe('Focar')
     expect(result.tasks[0].status).toBe('active')
+  })
+
+  it('applies an unlock suggestion without touching the daily plan or creating a cycle', () => {
+    const plan = makeDailyPlan({
+      date: DATE,
+      essentialTaskId: essencial.id,
+    })
+    const state = makeState({
+      tasks: [essencial],
+      dailyPlans: [plan],
+      cycles: [],
+      activeCycleId: null,
+    })
+    const next = pomodoroReducer(
+      state,
+      applyUnlockPlanToTaskAction({
+        taskId: essencial.id,
+        nextAction: 'Abrir o arquivo',
+        estimatedMinutes: 20,
+        energy: 'medium',
+        now: LATER,
+      }),
+    )
+
+    expect(next.tasks[0]).toMatchObject({
+      title: essencial.title,
+      status: 'active',
+      nextAction: 'Abrir o arquivo',
+      estimatedMinutes: 20,
+      energy: 'medium',
+    })
+    expect(next.dailyPlans).toBe(state.dailyPlans)
+    expect(next.dailyPlans[0]).toEqual(plan)
+    expect(next.cycles).toBe(state.cycles)
+    expect(next.activeCycleId).toBeNull()
+    expect(next.tasks[0].status).not.toBe('done')
+  })
+
+  it('rejects applying an unlock suggestion to a missing or done task', () => {
+    const done = makeTask({
+      id: 'done-1',
+      status: 'done',
+      completedAt: NOW,
+    })
+    const state = makeState({ tasks: [done] })
+    const payload = {
+      taskId: done.id,
+      nextAction: 'Abrir o arquivo',
+      estimatedMinutes: 20,
+      energy: 'medium' as const,
+      now: LATER,
+    }
+
+    const rejectedDone = pomodoroReducer(
+      state,
+      applyUnlockPlanToTaskAction(payload),
+    )
+    const rejectedMissing = pomodoroReducer(
+      state,
+      applyUnlockPlanToTaskAction({ ...payload, taskId: 'missing' }),
+    )
+
+    expect(rejectedDone.tasks).toBe(state.tasks)
+    expect(rejectedDone.dailyPlans).toBe(state.dailyPlans)
+    expect(rejectedMissing.tasks).toBe(state.tasks)
   })
 
   it('updates fields and rejects an invalid duration', () => {

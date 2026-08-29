@@ -16,6 +16,7 @@ import {
   moveTaskBetweenInboxAndActive,
   reopenTaskInList,
   reorderTasksByIds,
+  applyUnlockPlanToTask,
   updateTaskEnergy,
   updateTaskEstimatedMinutes,
   updateTaskNextAction,
@@ -284,6 +285,13 @@ export function pomodoroReducer(state: PomodoroState, action: PomodoroAction) {
           action.payload.energy,
           action.payload.now,
         ),
+        state.dailyPlans,
+      )
+
+    case ActionTypes.APPLY_UNLOCK_PLAN:
+      return withTasksAndPlans(
+        state,
+        applyUnlockPlanToTask(state.tasks, action.payload),
         state.dailyPlans,
       )
 

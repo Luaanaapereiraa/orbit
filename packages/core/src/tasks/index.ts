@@ -274,6 +274,49 @@ export function updateTaskEnergy(
   )
 }
 
+export function applyUnlockPlanToTask(
+  tasks: Task[],
+  input: {
+    taskId: string
+    nextAction: string
+    estimatedMinutes: number
+    energy: TaskEnergy
+    now: string
+  },
+) {
+  const nextAction = normalizeNextAction(input.nextAction)
+
+  if (
+    !nextAction ||
+    !isValidEstimatedMinutes(input.estimatedMinutes) ||
+    input.estimatedMinutes === null ||
+    !isTaskEnergy(input.energy)
+  ) {
+    return tasks
+  }
+
+  return patchTask(tasks, input.taskId, input.now, (task) => {
+    if (task.status !== 'inbox' && task.status !== 'active') {
+      return task
+    }
+
+    if (
+      task.nextAction === nextAction &&
+      task.estimatedMinutes === input.estimatedMinutes &&
+      task.energy === input.energy
+    ) {
+      return task
+    }
+
+    return {
+      ...task,
+      nextAction,
+      estimatedMinutes: input.estimatedMinutes,
+      energy: input.energy,
+    }
+  })
+}
+
 export function moveTaskBetweenInboxAndActive(
   tasks: Task[],
   taskId: string,

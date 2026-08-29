@@ -9,33 +9,27 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { createSupabaseAuthClient } from '../lib/auth/supabase-auth'
-import type { AuthClient, AuthSession } from '../lib/auth/types'
+import { createSupabaseBrowserClient } from '../lib/auth/supabase-browser'
+import type {
+  AuthClient,
+  AuthContextValue,
+  Session,
+} from '../lib/auth/types'
 import { isPublicAuthConfigured } from '../lib/public-env'
 
-export type AuthStatus = 'loading' | 'signed-out' | 'signed-in'
-
-interface AuthContextValue {
-  status: AuthStatus
-  session: AuthSession | null
-  configured: boolean
-  signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string) => Promise<void>
-  signOut: () => Promise<void>
-}
-
 const fallbackAuth: AuthContextValue = {
-  status: 'signed-out',
+  user: null,
   session: null,
+  isLoading: false,
   configured: false,
-  async signIn() {
-    throw new Error('A autenticação ainda não está configurada.')
-  },
-  async signUp() {
+  async signInWithEmail() {
     throw new Error('A autenticação ainda não está configurada.')
   },
   async signOut() {
     return undefined
+  },
+  async getAccessToken() {
+    return null
   },
 }
 
@@ -44,7 +38,7 @@ const AuthContext = createContext<AuthContextValue>(fallbackAuth)
 interface AuthProviderProps {
   children: ReactNode
   client?: AuthClient | null
-  initialSession?: AuthSession | null
+  initialSession?: Session | null
   skipBootstrap?: boolean
 }
 
@@ -55,14 +49,14 @@ export function AuthProvider({
   skipBootstrap = false,
 }: AuthProviderProps) {
   const authClient = useMemo(
-    () => (client === undefined ? createSupabaseAuthClient() : client),
+    () => (client === undefined ? createSupabaseBrowserClient() : client),
     [client],
   )
   const configured =
     client === undefined ? isPublicAuthConfigured() : !!authClient
-  const [session, setSession] = useState<AuthSession | null>(initialSession)
-  const [status, setStatus] = useState<AuthStatus>(
-    skipBootstrap ? (initialSession ? 'signed-in' : 'signed-out') : 'loading',
+  const [session, setSession] = useState<Session | null>(initialSession)
+  const [isLoading, setIsLoading] = useState(
+    skipBootstrap ? false : !initialSession,
   )
 
   useEffect(() => {
@@ -72,7 +66,7 @@ export function AuthProvider({
 
     if (!authClient) {
       setSession(null)
-      setStatus('signed-out')
+      setIsLoading(false)
       return
     }
 
@@ -85,19 +79,19 @@ export function AuthProvider({
           return
         }
         setSession(next)
-        setStatus(next ? 'signed-in' : 'signed-out')
+        setIsLoading(false)
       })
       .catch(() => {
         if (cancelled) {
           return
         }
         setSession(null)
-        setStatus('signed-out')
+        setIsLoading(false)
       })
 
     const unsubscribe = authClient.onAuthStateChange((next) => {
       setSession(next)
-      setStatus(next ? 'signed-in' : 'signed-out')
+      setIsLoading(false)
     })
 
     return () => {
@@ -106,26 +100,12 @@ export function AuthProvider({
     }
   }, [authClient, skipBootstrap])
 
-  const signIn = useCallback(
-    async (email: string, password: string) => {
+  const signInWithEmail = useCallback(
+    async (email: string) => {
       if (!authClient) {
         throw new Error('A autenticação ainda não está configurada.')
       }
-      const next = await authClient.signIn(email, password)
-      setSession(next)
-      setStatus('signed-in')
-    },
-    [authClient],
-  )
-
-  const signUp = useCallback(
-    async (email: string, password: string) => {
-      if (!authClient) {
-        throw new Error('A autenticação ainda não está configurada.')
-      }
-      const next = await authClient.signUp(email, password)
-      setSession(next)
-      setStatus('signed-in')
+      await authClient.signInWithEmail(email)
     },
     [authClient],
   )
@@ -133,24 +113,32 @@ export function AuthProvider({
   const signOut = useCallback(async () => {
     if (!authClient) {
       setSession(null)
-      setStatus('signed-out')
+      setIsLoading(false)
       return
     }
     await authClient.signOut()
     setSession(null)
-    setStatus('signed-out')
+    setIsLoading(false)
   }, [authClient])
 
-  const value = useMemo(
+  const getAccessToken = useCallback(async () => {
+    if (authClient) {
+      return authClient.getAccessToken()
+    }
+    return session?.accessToken ?? null
+  }, [authClient, session])
+
+  const value = useMemo<AuthContextValue>(
     () => ({
-      status,
+      user: session?.user ?? null,
       session,
+      isLoading,
       configured,
-      signIn,
-      signUp,
+      signInWithEmail,
       signOut,
+      getAccessToken,
     }),
-    [configured, session, signIn, signOut, signUp, status],
+    [configured, getAccessToken, isLoading, session, signInWithEmail, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
