@@ -90,7 +90,16 @@ export function UnlockTaskDialog({
   const [focusStarting, setFocusStarting] = useState(false)
 
   useEffect(() => {
-    if (open && !wasOpenRef.current) {
+    if (!open) {
+      if (wasOpenRef.current) {
+        agent.cancelWait()
+      }
+      wasOpenRef.current = false
+      return
+    }
+
+    const canInitialize = hydrated || suggested !== null
+    if (!wasOpenRef.current && canInitialize) {
       agent.reset(suggested?.id ?? '', settings.focusMinutes)
       setConfirm(null)
       setFocusBlocked(false)
@@ -99,14 +108,11 @@ export function UnlockTaskDialog({
       appliedTaskIdRef.current = null
       focusStartInFlightRef.current = false
       setFocusStarting(false)
+      wasOpenRef.current = true
     }
-    if (!open && wasOpenRef.current) {
-      agent.cancelWait()
-    }
-    wasOpenRef.current = open
-    // Reset only when the dialog opens or closes.
+    // Initialize only when the dialog opens and a selection can be resolved.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, settings.focusMinutes])
+  }, [hydrated, open, settings.focusMinutes, suggested])
 
   const submitted = agent.state.submitted
   const submittedTask =
@@ -403,7 +409,12 @@ export function UnlockTaskDialog({
             >
               Cancelar
             </Button>
-            <Button type="button" data-initial-focus="" onClick={confirmAction}>
+            <Button
+              type="button"
+              data-initial-focus=""
+              disabled={focusStarting}
+              onClick={confirmAction}
+            >
               Usar este plano
             </Button>
           </div>

@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from 'react'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   UnlockTaskRunRequest,
   UnlockTaskRunResponse,
@@ -654,5 +654,177 @@ describe('Estou travada apply identity', () => {
         screen.getByRole('button', { name: 'Começar foco' }),
       ).toBeInTheDocument()
     })
+  })
+})
+
+function ParentUnlockHarness({
+  run,
+  preferredTaskId = 'task-a',
+}: {
+  run: (
+    body: UnlockTaskRunRequest,
+    token: string,
+    options?: { signal?: AbortSignal },
+  ) => Promise<UnlockTaskRunResponse>
+  preferredTaskId?: string
+}) {
+  const [open, setOpen] = useState(true)
+  const { completeTask } = usePomodoro()
+  return (
+    <>
+      <UnlockTaskDialog
+        open={open}
+        preferredTaskId={preferredTaskId}
+        onClose={() => setOpen(false)}
+        run={run}
+      />
+      <button type="button" onClick={() => completeTask('task-a')}>
+        complete-a
+      </button>
+    </>
+  )
+}
+
+describe('Estou travada dialog lifecycle and selection', () => {
+  beforeEach(() => {
+    installNativeDialog()
+  })
+
+  afterEach(() => {
+    cleanup()
+    localStorage.clear()
+    navigation.push.mockReset()
+  })
+
+  it('keeps the same dialog open through submit, result and confirm', async () => {
+    persistTwoTasks()
+    let resolveRun: (value: UnlockTaskRunResponse) => void = () => undefined
+    const run = vi.fn(
+      (
+        _body: UnlockTaskRunRequest,
+        _token: string,
+        options?: { signal?: AbortSignal },
+      ) => {
+        return new Promise<UnlockTaskRunResponse>((resolve) => {
+          resolveRun = (value) => {
+            expect(options?.signal?.aborted).not.toBe(true)
+            resolve(value)
+          }
+        })
+      },
+    )
+    const user = userEvent.setup()
+    render(
+      <AuthProvider skipBootstrap client={authClient} initialSession={session()}>
+        <PomodoroProvider>
+          <ParentUnlockHarness run={run} />
+        </PomodoroProvider>
+      </AuthProvider>,
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Criar meu próximo passo' }),
+    )
+    expect(document.querySelector('dialog')?.open).toBe(true)
+    expect(screen.getByText(/Entendendo o que está bloqueando/)).toBeInTheDocument()
+
+    resolveRun(completed())
+    expect(
+      await screen.findByText(/Isto é uma sugestão para/),
+    ).toBeInTheDocument()
+    expect(document.querySelector('dialog')?.open).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: 'Usar este plano' }))
+    expect(screen.getByRole('heading', { name: 'Usar este plano?' })).toBeInTheDocument()
+    expect(document.querySelector('dialog')?.open).toBe(true)
+    expect(run).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not close when apply fails after the task changes', async () => {
+    persistTwoTasks()
+    const run = vi.fn(async () => completed())
+    const user = userEvent.setup()
+    render(
+      <AuthProvider skipBootstrap client={authClient} initialSession={session()}>
+        <PomodoroProvider>
+          <ParentUnlockHarness run={run} />
+        </PomodoroProvider>
+      </AuthProvider>,
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Criar meu próximo passo' }),
+    )
+    await screen.findByText(/Isto é uma sugestão para/)
+    await user.click(screen.getByRole('button', { name: 'Usar este plano' }))
+    await user.click(screen.getByRole('button', { name: 'complete-a' }))
+    await user.click(screen.getByRole('button', { name: 'Usar este plano' }))
+
+    expect(
+      await screen.findByText(
+        'Esta tarefa mudou enquanto o plano era criado. O plano não foi aplicado.',
+      ),
+    ).toBeInTheDocument()
+    expect(document.querySelector('dialog')?.open).toBe(true)
+  })
+
+  it('does not silently switch to B or send when A becomes ineligible', async () => {
+    persistTwoTasks()
+    const run = vi.fn(async () => completed())
+    const user = userEvent.setup()
+    render(
+      <AuthProvider skipBootstrap client={authClient} initialSession={session()}>
+        <PomodoroProvider>
+          <ParentUnlockHarness run={run} />
+        </PomodoroProvider>
+      </AuthProvider>,
+    )
+
+    expect(
+      await screen.findByRole('button', { name: 'Criar meu próximo passo' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'complete-a' }))
+
+    expect(
+      await screen.findByText(
+        'A tarefa selecionada não está mais disponível. Escolha outra para continuar.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Criar meu próximo passo' }),
+    ).not.toBeInTheDocument()
+    expect(run).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Escolher outra tarefa' }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Criar meu próximo passo' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('combobox')).toHaveValue('task-b')
+  })
+
+  it('starts only one cycle on double click of Começar foco', async () => {
+    persistTodayTask()
+    const run = vi.fn(async () => completed())
+    const user = userEvent.setup()
+    renderDialog(run)
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Criar meu próximo passo' }),
+    )
+    await screen.findByText(/Isto é uma sugestão para/)
+    await user.click(screen.getByRole('button', { name: 'Usar este plano' }))
+    await user.click(screen.getByRole('button', { name: 'Usar este plano' }))
+    await screen.findByText('Plano aplicado à tarefa.')
+    await user.dblClick(screen.getByRole('button', { name: 'Começar foco' }))
+
+    expect(navigation.push).toHaveBeenCalledTimes(1)
+    expect(navigation.push).toHaveBeenCalledWith('/focus')
+    const cycles = JSON.parse(
+      String(localStorage.getItem(STORAGE_KEY_DESTRAVAI)),
+    ).state.cycles
+    expect(cycles).toHaveLength(1)
+    expect(cycles[0].interruptedDate).toBeUndefined()
   })
 })

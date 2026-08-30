@@ -6,8 +6,11 @@ import { makeState, makeTask } from '../test/factories'
 import { PomodoroProvider, usePomodoro } from './PomodoroContext'
 
 function storedCycles() {
-  return JSON.parse(String(localStorage.getItem(STORAGE_KEY_DESTRAVAI) ?? '{}'))
-    .state.cycles as Array<{
+  const raw = localStorage.getItem(STORAGE_KEY_DESTRAVAI)
+  if (!raw) {
+    return []
+  }
+  return (JSON.parse(raw).state?.cycles ?? []) as Array<{
     id: string
     interruptedDate?: string
     taskId: string
@@ -139,18 +142,6 @@ describe('startFocusForTask concurrency', () => {
     persistPomodoroState(
       makeState({
         tasks: [makeTask({ id: 'task-1', title: 'Escrever o parágrafo' })],
-        cycles: [
-          {
-            id: 'cycle-1',
-            type: 'focus',
-            task: 'Escrever o parágrafo',
-            taskId: 'task-1',
-            minutesAmount: 25,
-            startDate: new Date('2026-08-29T12:00:00.000Z'),
-            pausedMs: 0,
-          },
-        ],
-        activeCycleId: 'cycle-1',
       }),
     )
     render(
@@ -160,8 +151,13 @@ describe('startFocusForTask concurrency', () => {
     )
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'start-once' }))
+    expect(document.body.dataset.after).toBe('started')
+    await user.click(screen.getByRole('button', { name: 'start-once' }))
     expect(document.body.dataset.after).toBe('active_cycle_exists')
-    expect(storedCycles()).toHaveLength(1)
+    await waitFor(() => {
+      expect(storedCycles()).toHaveLength(1)
+      expect(storedCycles()[0]?.interruptedDate).toBeUndefined()
+    })
   })
 
   it('allows a new start after the previous cycle is interrupted', async () => {

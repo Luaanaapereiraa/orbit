@@ -116,15 +116,24 @@ export function Dialog({
     }
   }, [focusKey, initialFocusRef, open])
 
+  const dismissOnceRef = useRef(false)
+
   function requestClose() {
+    if (dismissOnceRef.current) {
+      return
+    }
+    dismissOnceRef.current = true
     onClose()
+    queueMicrotask(() => {
+      dismissOnceRef.current = false
+    })
   }
 
   function handleNativeClose() {
-    if (programmaticCloseRef.current) {
+    if (programmaticCloseRef.current || dismissOnceRef.current) {
       return
     }
-    onClose()
+    requestClose()
   }
 
   if (!open) {
@@ -140,6 +149,13 @@ export function Dialog({
       aria-describedby={description ? descriptionId : undefined}
       onClose={handleNativeClose}
       onCancel={(event) => {
+        event.preventDefault()
+        requestClose()
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') {
+          return
+        }
         event.preventDefault()
         requestClose()
       }}
