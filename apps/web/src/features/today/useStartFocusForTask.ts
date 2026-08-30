@@ -15,7 +15,11 @@ export function useStartFocusForTask() {
     (taskId: string): StartFocusResult => {
       const result = startFocusForTask(taskId)
 
-      if (result === 'rejected') {
+      if (
+        result.status === 'task_not_found' ||
+        result.status === 'task_not_eligible' ||
+        result.status === 'start_in_progress'
+      ) {
         return result
       }
 

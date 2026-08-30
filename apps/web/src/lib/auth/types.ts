@@ -8,12 +8,22 @@ export type Session = {
   user: User
 }
 
+export type AuthChangeEvent =
+  | 'INITIAL_SESSION'
+  | 'SIGNED_IN'
+  | 'SIGNED_OUT'
+  | 'TOKEN_REFRESHED'
+  | 'USER_UPDATED'
+  | string
+
 export interface AuthClient {
   getSession(): Promise<Session | null>
   signInWithEmail(email: string): Promise<void>
   signOut(): Promise<void>
   getAccessToken(): Promise<string | null>
-  onAuthStateChange(listener: (session: Session | null) => void): () => void
+  onAuthStateChange(
+    listener: (session: Session | null, event?: AuthChangeEvent) => void,
+  ): () => void
 }
 
 export type AuthContextValue = {

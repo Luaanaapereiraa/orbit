@@ -6,11 +6,17 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { createSupabaseBrowserClient } from '../lib/auth/supabase-browser'
-import type { AuthClient, AuthContextValue, Session } from '../lib/auth/types'
+import type {
+  AuthChangeEvent,
+  AuthClient,
+  AuthContextValue,
+  Session,
+} from '../lib/auth/types'
 import { isPublicAuthConfigured } from '../lib/public-env'
 
 const fallbackAuth: AuthContextValue = {
@@ -54,12 +60,26 @@ export function AuthProvider({
   const [isLoading, setIsLoading] = useState(
     skipBootstrap ? false : !initialSession,
   )
+  const signedOutRef = useRef(false)
 
-  useEffect(() => {
-    if (skipBootstrap) {
+  function applyAuthEvent(
+    next: Session | null,
+    event?: AuthChangeEvent,
+  ) {
+    if (signedOutRef.current) {
+      if (event === 'SIGNED_IN' && next) {
+        signedOutRef.current = false
+        setSession(next)
+        setIsLoading(false)
+      }
       return
     }
 
+    setSession(next)
+    setIsLoading(false)
+  }
+
+  useEffect(() => {
     if (!authClient) {
       setSession(null)
       setIsLoading(false)
@@ -68,26 +88,30 @@ export function AuthProvider({
 
     let cancelled = false
 
-    authClient
-      .getSession()
-      .then((next) => {
-        if (cancelled) {
-          return
-        }
-        setSession(next)
-        setIsLoading(false)
-      })
-      .catch(() => {
-        if (cancelled) {
-          return
-        }
-        setSession(null)
-        setIsLoading(false)
-      })
+    if (!skipBootstrap) {
+      authClient
+        .getSession()
+        .then((next) => {
+          if (cancelled || signedOutRef.current) {
+            return
+          }
+          setSession(next)
+          setIsLoading(false)
+        })
+        .catch(() => {
+          if (cancelled) {
+            return
+          }
+          setSession(null)
+          setIsLoading(false)
+        })
+    }
 
-    const unsubscribe = authClient.onAuthStateChange((next) => {
-      setSession(next)
-      setIsLoading(false)
+    const unsubscribe = authClient.onAuthStateChange((next, event) => {
+      if (cancelled) {
+        return
+      }
+      applyAuthEvent(next, event)
     })
 
     return () => {
@@ -107,14 +131,13 @@ export function AuthProvider({
   )
 
   const signOut = useCallback(async () => {
+    signedOutRef.current = true
+    setSession(null)
+    setIsLoading(false)
     if (!authClient) {
-      setSession(null)
-      setIsLoading(false)
       return
     }
     await authClient.signOut()
-    setSession(null)
-    setIsLoading(false)
   }, [authClient])
 
   const getAccessToken = useCallback(async () => {

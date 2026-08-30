@@ -92,8 +92,8 @@ export function createSupabaseBrowserClient(): AuthClient | null {
       return tokenReader.getAccessToken()
     },
     onAuthStateChange(listener) {
-      const { data } = client.auth.onAuthStateChange((_event, session) => {
-        listener(sessionFrom(session))
+      const { data } = client.auth.onAuthStateChange((event, session) => {
+        listener(sessionFrom(session), event)
       })
       return () => data.subscription.unsubscribe()
     },

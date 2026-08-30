@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -13,6 +13,7 @@ import { persistPomodoroState, STORAGE_KEY_DESTRAVAI } from '../../lib/storage'
 import { toLocalDateKey } from '../../lib/local-date'
 import { makeDailyPlan, makeState, makeTask } from '../../test/factories'
 import { TodayPage } from '../today/TodayPage'
+import { installNativeDialog } from '../../test/native-dialog'
 import { UnlockTaskDialog } from './components/UnlockTaskDialog'
 
 const navigation = vi.hoisted(() => ({

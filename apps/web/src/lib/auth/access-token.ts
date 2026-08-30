@@ -5,6 +5,11 @@ export type AccessTokenSession = {
   expiresAt: number | null
 }
 
+type RefreshEntry = {
+  generation: number
+  promise: Promise<string | null>
+}
+
 export function createAccessTokenReader(options: {
   getSession: () => Promise<AccessTokenSession | null>
   refreshSession: () => Promise<AccessTokenSession | null>
@@ -12,12 +17,11 @@ export function createAccessTokenReader(options: {
   now?: () => number
   expiryMarginSeconds?: number
 }) {
-  let refreshInFlight: Promise<string | null> | null = null
+  let refreshInFlight: RefreshEntry | null = null
   let generation = 0
 
   function invalidate() {
     generation += 1
-    refreshInFlight = null
   }
 
   function needsRefresh(session: AccessTokenSession, nowMs: number) {
@@ -29,13 +33,29 @@ export function createAccessTokenReader(options: {
     return session.expiresAt * 1000 <= nowMs + margin * 1000
   }
 
+  async function discardStaleRefresh(refreshed: AccessTokenSession | null) {
+    if (!refreshed?.accessToken) {
+      return
+    }
+
+    const current = await options.getSession()
+    if (current?.accessToken === refreshed.accessToken) {
+      await options.clearSession()
+    }
+  }
+
   async function getAccessToken() {
-    if (refreshInFlight) {
-      return refreshInFlight
+    if (refreshInFlight && refreshInFlight.generation === generation) {
+      return refreshInFlight.promise
     }
 
     const startedGeneration = generation
-    refreshInFlight = (async () => {
+    const entry: RefreshEntry = {
+      generation: startedGeneration,
+      promise: Promise.resolve(null),
+    }
+
+    entry.promise = (async () => {
       try {
         const session = await options.getSession()
         if (generation !== startedGeneration) {
@@ -52,6 +72,7 @@ export function createAccessTokenReader(options: {
 
         const refreshed = await options.refreshSession()
         if (generation !== startedGeneration) {
+          await discardStaleRefresh(refreshed)
           return null
         }
         if (!refreshed?.accessToken) {
@@ -66,11 +87,14 @@ export function createAccessTokenReader(options: {
         await options.clearSession()
         return null
       } finally {
-        refreshInFlight = null
+        if (refreshInFlight === entry) {
+          refreshInFlight = null
+        }
       }
     })()
 
-    return refreshInFlight
+    refreshInFlight = entry
+    return entry.promise
   }
 
   return { getAccessToken, invalidate }

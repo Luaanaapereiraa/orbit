@@ -15,6 +15,37 @@ interface DialogProps {
   focusKey?: string
 }
 
+function openNativeDialog(dialog: HTMLDialogElement) {
+  if (dialog.open) {
+    return
+  }
+
+  if (typeof dialog.showModal === 'function') {
+    try {
+      dialog.showModal()
+      return
+    } catch {
+      dialog.setAttribute('open', '')
+      return
+    }
+  }
+
+  dialog.setAttribute('open', '')
+}
+
+function closeNativeDialog(dialog: HTMLDialogElement) {
+  if (!dialog.open) {
+    return
+  }
+
+  if (typeof dialog.close === 'function') {
+    dialog.close()
+    return
+  }
+
+  dialog.removeAttribute('open')
+}
+
 export function Dialog({
   open,
   title,
@@ -27,32 +58,41 @@ export function Dialog({
   focusKey,
 }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const programmaticCloseRef = useRef(false)
   const titleId = useId()
   const descriptionId = useId()
 
   useEffect(() => {
-    const node = dialogRef.current
-
-    if (!open || !node) {
+    const dialog = dialogRef.current
+    if (!open || !dialog) {
       return
     }
 
-    const dialog = node
     const previous =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null
 
-    if (typeof dialog.showModal === 'function') {
-      try {
-        if (!dialog.open) {
-          dialog.showModal()
-        }
-      } catch {
-        dialog.setAttribute('open', '')
-      }
-    } else {
-      dialog.setAttribute('open', '')
+    openNativeDialog(dialog)
+
+    return () => {
+      programmaticCloseRef.current = true
+      closeNativeDialog(dialog)
+      queueMicrotask(() => {
+        programmaticCloseRef.current = false
+      })
+      previous?.focus?.()
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const dialog = dialogRef.current
+    if (!dialog) {
+      return
     }
 
     function focusUsefulControl() {
@@ -71,16 +111,21 @@ export function Dialog({
 
     focusUsefulControl()
     const frame = window.requestAnimationFrame(focusUsefulControl)
-
     return () => {
       window.cancelAnimationFrame(frame)
-      if (typeof dialog.close === 'function' && dialog.open) {
-        dialog.close()
-      }
-
-      previous?.focus?.()
     }
   }, [focusKey, initialFocusRef, open])
+
+  function requestClose() {
+    onClose()
+  }
+
+  function handleNativeClose() {
+    if (programmaticCloseRef.current) {
+      return
+    }
+    onClose()
+  }
 
   if (!open) {
     return null
@@ -93,16 +138,10 @@ export function Dialog({
       aria-modal="true"
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
-      onClose={onClose}
+      onClose={handleNativeClose}
       onCancel={(event) => {
         event.preventDefault()
-        onClose()
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          onClose()
-        }
+        requestClose()
       }}
       className={cn(
         'm-auto w-[min(36rem,calc(100vw-2rem))] rounded-2xl border border-line bg-panel p-0 text-ink shadow-xl backdrop:bg-ink/40 dark:border-line-dark dark:bg-panel-dark dark:text-ink-dark',
@@ -126,7 +165,7 @@ export function Dialog({
         </div>
         <button
           type="button"
-          onClick={onClose}
+          onClick={requestClose}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-line hover:text-ink focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none dark:text-muted-dark dark:hover:bg-line-dark dark:hover:text-ink-dark"
           aria-label="Fechar"
         >

@@ -24,6 +24,9 @@ import { UnlockTaskRejected } from './UnlockTaskRejected'
 const STALE_TASK_MESSAGE =
   'Esta tarefa mudou enquanto o plano era criado. O plano não foi aplicado.'
 
+const STALE_FORM_TASK_MESSAGE =
+  'A tarefa selecionada não está mais disponível. Escolha outra para continuar.'
+
 interface UnlockTaskDialogProps {
   open: boolean
   preferredTaskId?: string | null
@@ -83,6 +86,8 @@ export function UnlockTaskDialog({
   const wasOpenRef = useRef(false)
   const actionLockRef = useRef(false)
   const appliedTaskIdRef = useRef<string | null>(null)
+  const focusStartInFlightRef = useRef(false)
+  const [focusStarting, setFocusStarting] = useState(false)
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
@@ -92,6 +97,8 @@ export function UnlockTaskDialog({
       setJustApplied(false)
       setApplyError(null)
       appliedTaskIdRef.current = null
+      focusStartInFlightRef.current = false
+      setFocusStarting(false)
     }
     if (!open && wasOpenRef.current) {
       agent.cancelWait()
@@ -109,10 +116,13 @@ export function UnlockTaskDialog({
   const submittedEligible =
     submittedTask !== null && canRequestUnlock(submittedTask)
 
-  const formTask =
-    eligible.find((task) => task.id === agent.state.fields.taskId) ??
-    suggested ??
-    null
+  const selectedFormTask =
+    eligible.find((task) => task.id === agent.state.fields.taskId) ?? null
+  const formSelectionStale =
+    agent.state.status === 'form' &&
+    agent.state.fields.taskId.length > 0 &&
+    selectedFormTask === null
+  const formTask = formSelectionStale ? null : selectedFormTask
 
   const showingResult =
     agent.state.status === 'completed' ||
@@ -163,7 +173,7 @@ export function UnlockTaskDialog({
       agent.state.status === 'needs_clarification' ||
       agent.state.status === 'error'
         ? submittedTask
-        : formTask
+        : selectedFormTask
     if (!taskForSubmit || !dateKey || !canRequestUnlock(taskForSubmit)) {
       return
     }
@@ -224,8 +234,13 @@ export function UnlockTaskDialog({
     setConfirm('apply')
   }
 
+  function releaseFocusStart() {
+    focusStartInFlightRef.current = false
+    setFocusStarting(false)
+  }
+
   function handleStartFocus() {
-    if (actionLockRef.current) {
+    if (focusStartInFlightRef.current || actionLockRef.current) {
       return
     }
     if (activeCycle) {
@@ -244,55 +259,65 @@ export function UnlockTaskDialog({
   }
 
   function startSubmittedFocus() {
-    if (actionLockRef.current) {
+    if (focusStartInFlightRef.current) {
       return
     }
-    actionLockRef.current = true
-    try {
-      if (!submitted) {
-        return
-      }
-      const alreadyApplied =
-        appliedTaskIdRef.current === submitted.taskId ||
-        (agent.state.status === 'applied' &&
-          agent.state.appliedTaskId === submitted.taskId)
-      if (!alreadyApplied) {
-        const result = applyToSubmittedTask()
-        if (result.status !== 'applied') {
-          setApplyError(STALE_TASK_MESSAGE)
-          setJustApplied(false)
-          return
-        }
-      } else {
-        const target =
-          tasks.find((task) => task.id === submitted.taskId) ?? null
-        if (!target || !canRequestUnlock(target)) {
-          setApplyError(STALE_TASK_MESSAGE)
-          return
-        }
-      }
+    focusStartInFlightRef.current = true
+    setFocusStarting(true)
 
-      if (activeCycle) {
-        setFocusBlocked(true)
-        return
-      }
-
-      const focusResult = startFocusForTask(submitted.taskId)
-      if (focusResult === 'already-active') {
-        setFocusBlocked(true)
-        return
-      }
-      if (focusResult === 'started') {
-        closeDialog()
-        router.push('/focus')
-      }
-    } finally {
-      actionLockRef.current = false
+    if (!submitted) {
+      releaseFocusStart()
+      return
     }
+    const alreadyApplied =
+      appliedTaskIdRef.current === submitted.taskId ||
+      (agent.state.status === 'applied' &&
+        agent.state.appliedTaskId === submitted.taskId)
+    if (!alreadyApplied) {
+      const result = applyToSubmittedTask()
+      if (result.status !== 'applied') {
+        setApplyError(STALE_TASK_MESSAGE)
+        setJustApplied(false)
+        releaseFocusStart()
+        return
+      }
+    } else {
+      const target =
+        tasks.find((task) => task.id === submitted.taskId) ?? null
+      if (!target || !canRequestUnlock(target)) {
+        setApplyError(STALE_TASK_MESSAGE)
+        releaseFocusStart()
+        return
+      }
+    }
+
+    if (activeCycle) {
+      setFocusBlocked(true)
+      releaseFocusStart()
+      return
+    }
+
+    const focusResult = startFocusForTask(submitted.taskId)
+    if (focusResult.status === 'active_cycle_exists') {
+      setFocusBlocked(true)
+      releaseFocusStart()
+      return
+    }
+    if (focusResult.status === 'start_in_progress') {
+      return
+    }
+    if (focusResult.status === 'started') {
+      closeDialog()
+      router.push('/focus')
+      return
+    }
+
+    setApplyError(STALE_TASK_MESSAGE)
+    releaseFocusStart()
   }
 
   function confirmAction() {
-    if (actionLockRef.current) {
+    if (actionLockRef.current || focusStartInFlightRef.current) {
       return
     }
     actionLockRef.current = true
@@ -323,6 +348,13 @@ export function UnlockTaskDialog({
     setJustApplied(false)
     setApplyError(null)
     appliedTaskIdRef.current = null
+    releaseFocusStart()
+  }
+
+  function chooseAnotherFormTask() {
+    const next = suggested ?? eligible[0] ?? null
+    agent.reset(next?.id ?? '', settings.focusMinutes)
+    setApplyError(null)
   }
 
   const signedIn = !!session && !isLoading
@@ -335,6 +367,7 @@ export function UnlockTaskDialog({
     confirm ?? 'none',
     applyError ? 'apply-error' : 'ok',
     staleSubmittedTask ? 'stale' : 'fresh',
+    formSelectionStale ? 'form-stale' : 'form-ok',
     agent.state.status === 'form' ? agent.state.formError?.message ?? '' : '',
   ].join(':')
 
@@ -418,6 +451,20 @@ export function UnlockTaskDialog({
             </Button>
           </div>
         </div>
+      ) : formSelectionStale ? (
+        <div className="space-y-4">
+          <p className="text-sm text-danger" role="alert">
+            {STALE_FORM_TASK_MESSAGE}
+          </p>
+          <Button
+            type="button"
+            data-initial-focus=""
+            onClick={chooseAnotherFormTask}
+            disabled={eligible.length === 0}
+          >
+            Escolher outra tarefa
+          </Button>
+        </div>
       ) : !formTask && agent.state.status === 'form' ? (
         <p className="text-sm text-muted dark:text-muted-dark" role="status">
           Não há tarefa elegível agora. Capture ou reabra uma tarefa para pedir
@@ -442,6 +489,7 @@ export function UnlockTaskDialog({
             response={agent.state.response}
             applied={applied && !applyError}
             focusMinutes={settings.focusMinutes}
+            focusDisabled={focusStarting}
             onUsePlan={handleUsePlan}
             onStartFocus={handleStartFocus}
             onRetry={() => {

@@ -7,6 +7,7 @@ interface UnlockTaskPlanProps {
   response: UnlockTaskRunCompleted
   applied: boolean
   focusMinutes: number
+  focusDisabled?: boolean
   onUsePlan: () => void
   onStartFocus: () => void
   onRetry: () => void
@@ -17,6 +18,7 @@ export function UnlockTaskPlan({
   response,
   applied,
   focusMinutes,
+  focusDisabled = false,
   onUsePlan,
   onStartFocus,
   onRetry,
@@ -87,7 +89,12 @@ export function UnlockTaskPlan({
             Usar este plano
           </Button>
         ) : null}
-        <Button type="button" variant="secondary" onClick={onStartFocus}>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={focusDisabled}
+          onClick={onStartFocus}
+        >
           Começar foco
         </Button>
         <Button type="button" variant="ghost" onClick={onRetry}>

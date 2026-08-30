@@ -62,7 +62,12 @@ import {
   unlockAudio,
 } from '../utils/cycleAlerts'
 
-export type StartFocusResult = 'started' | 'already-active' | 'rejected'
+export type StartFocusResult =
+  | { status: 'started'; cycleId: string }
+  | { status: 'active_cycle_exists'; cycleId: string }
+  | { status: 'task_not_found' }
+  | { status: 'task_not_eligible' }
+  | { status: 'start_in_progress' }
 
 export type ApplyUnlockPlanOutcome =
   | { status: 'applied'; taskId: string }
@@ -132,6 +137,13 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
   const [hydrated, setHydrated] = useState(false)
   const stateRef = useRef<PomodoroState>(state)
   stateRef.current = state
+  const startFocusLockRef = useRef(false)
+
+  useEffect(() => {
+    return () => {
+      startFocusLockRef.current = false
+    }
+  }, [])
 
   const { cycles, activeCycleId, selectedTaskId, tasks, dailyPlans, settings } =
     state
@@ -280,33 +292,53 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
   }, [selectedTask, settings.focusMinutes, settings.notificationsEnabled])
 
   const startFocusForTask = useCallback((taskId: string): StartFocusResult => {
+    if (startFocusLockRef.current) {
+      const activeId = stateRef.current.activeCycleId
+      if (activeId) {
+        return { status: 'active_cycle_exists', cycleId: activeId }
+      }
+      return { status: 'start_in_progress' }
+    }
+
     const current = stateRef.current
     const task = current.tasks.find((item) => item.id === taskId)
 
-    if (!task || task.status === 'done' || task.status === 'archived') {
-      return 'rejected'
+    if (!task) {
+      return { status: 'task_not_found' }
+    }
+
+    if (task.status === 'done' || task.status === 'archived') {
+      return { status: 'task_not_eligible' }
     }
 
     const running = current.cycles.find(
-      (cycle) => cycle.id === current.activeCycleId,
+      (cycle) =>
+        cycle.id === current.activeCycleId &&
+        !cycle.finishedDate &&
+        !cycle.interruptedDate,
     )
 
     if (running) {
-      return 'already-active'
+      return { status: 'active_cycle_exists', cycleId: running.id }
     }
 
+    startFocusLockRef.current = true
+    const cycleId = crypto.randomUUID()
+    const newCycle: Cycle = {
+      id: cycleId,
+      type: 'focus',
+      task: task.title,
+      taskId: task.id,
+      minutesAmount: current.settings.focusMinutes,
+      startDate: new Date(),
+      pausedMs: 0,
+    }
+
+    const selected = pomodoroReducer(current, selectTaskAction(task.id))
+    stateRef.current = pomodoroReducer(selected, addNewCycleAction(newCycle))
+
     dispatch(selectTaskAction(task.id))
-    dispatch(
-      addNewCycleAction({
-        id: crypto.randomUUID(),
-        type: 'focus',
-        task: task.title,
-        taskId: task.id,
-        minutesAmount: current.settings.focusMinutes,
-        startDate: new Date(),
-        pausedMs: 0,
-      }),
-    )
+    dispatch(addNewCycleAction(newCycle))
     setAmountSecondsPassed(0)
     unlockAudio()
 
@@ -314,7 +346,8 @@ export function PomodoroProvider({ children }: PomodoroProviderProps) {
       requestNotificationPermission()
     }
 
-    return 'started'
+    startFocusLockRef.current = false
+    return { status: 'started', cycleId }
   }, [])
 
   const pauseCurrentCycle = useCallback(() => {

@@ -129,6 +129,60 @@ describe('AuthProvider', () => {
     expect(stored.state.tasks[0].title).toBe('Escrever o parágrafo')
   })
 
+  it('ignores a stale TOKEN_REFRESHED after logout and keeps a later login', async () => {
+    let emit: (next: Session | null, event?: string) => void = () => undefined
+    const signOut = vi.fn(async () => undefined)
+    const user = userEvent.setup()
+
+    function SignOutButton() {
+      const { signOut: leave, user: current } = useAuth()
+      return (
+        <button type="button" onClick={() => leave()}>
+          {current ? `Sair ${current.email}` : 'Saiu'}
+        </button>
+      )
+    }
+
+    render(
+      <AuthProvider
+        skipBootstrap
+        client={createClient({
+          signOut,
+          onAuthStateChange(listener) {
+            emit = listener
+            return () => undefined
+          },
+        })}
+        initialSession={session()}
+      >
+        <SignOutButton />
+      </AuthProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Sair a@b.c' }))
+    expect(screen.getByRole('button', { name: 'Saiu' })).toBeInTheDocument()
+
+    emit(
+      {
+        accessToken: 'refreshed-after-logout',
+        user: { id: 'user-1', email: 'a@b.c' },
+      },
+      'TOKEN_REFRESHED',
+    )
+    expect(screen.getByRole('button', { name: 'Saiu' })).toBeInTheDocument()
+
+    emit(
+      {
+        accessToken: 'new-login-jwt',
+        user: { id: 'user-2', email: 'novo@b.c' },
+      },
+      'SIGNED_IN',
+    )
+    expect(
+      await screen.findByRole('button', { name: 'Sair novo@b.c' }),
+    ).toBeInTheDocument()
+  })
+
   it('cleans the auth subscription on unmount', async () => {
     const unsubscribe = vi.fn()
     const { unmount } = render(
