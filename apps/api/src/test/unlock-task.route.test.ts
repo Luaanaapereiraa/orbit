@@ -277,7 +277,8 @@ describe('POST /v1/agents/unlock-task/runs', () => {
 
   it('uses fallback on timeout and does not pretend it was the agent', async () => {
     const runner: UnlockAgentRunner = {
-      async run() {
+      async run(context) {
+        context.cancelled = true
         throw new AgentTimeoutError()
       },
     }

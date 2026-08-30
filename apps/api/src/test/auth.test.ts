@@ -84,6 +84,25 @@ describe('authentication', () => {
     expect(body.user).toEqual({ id: 'user-42', isAnonymous: false })
   })
 
+  it('returns 401 when auth context is missing after a successful header', async () => {
+    app = await buildTestApp({
+      jwtVerifier: {
+        async verify() {
+          return undefined as never
+        },
+      },
+    })
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/me',
+      headers: { authorization: 'Bearer valid-looking-token' },
+    })
+    expect(response.statusCode).toBe(401)
+    const body = ApiErrorResponseSchema.parse(response.json())
+    expect(body.error.code).toBe('UNAUTHORIZED')
+    expect(body.error.message).toBe('Authentication required')
+  })
+
   it('returns an anonymous user from the JWT claim', async () => {
     const keys = await createTestVerifier()
     app = await buildTestApp({ jwtVerifier: keys.verifier })

@@ -62,10 +62,7 @@ export function AuthProvider({
   )
   const signedOutRef = useRef(false)
 
-  function applyAuthEvent(
-    next: Session | null,
-    event?: AuthChangeEvent,
-  ) {
+  function applyAuthEvent(next: Session | null, event?: AuthChangeEvent) {
     if (signedOutRef.current) {
       if (event === 'SIGNED_IN' && next) {
         signedOutRef.current = false

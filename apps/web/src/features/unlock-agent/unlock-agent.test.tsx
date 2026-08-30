@@ -715,7 +715,11 @@ describe('Estou travada dialog lifecycle and selection', () => {
     )
     const user = userEvent.setup()
     render(
-      <AuthProvider skipBootstrap client={authClient} initialSession={session()}>
+      <AuthProvider
+        skipBootstrap
+        client={authClient}
+        initialSession={session()}
+      >
         <PomodoroProvider>
           <ParentUnlockHarness run={run} />
         </PomodoroProvider>
@@ -726,7 +730,9 @@ describe('Estou travada dialog lifecycle and selection', () => {
       await screen.findByRole('button', { name: 'Criar meu próximo passo' }),
     )
     expect(document.querySelector('dialog')?.open).toBe(true)
-    expect(screen.getByText(/Entendendo o que está bloqueando/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Entendendo o que está bloqueando/),
+    ).toBeInTheDocument()
 
     resolveRun(completed())
     expect(
@@ -735,7 +741,9 @@ describe('Estou travada dialog lifecycle and selection', () => {
     expect(document.querySelector('dialog')?.open).toBe(true)
 
     await user.click(screen.getByRole('button', { name: 'Usar este plano' }))
-    expect(screen.getByRole('heading', { name: 'Usar este plano?' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Usar este plano?' }),
+    ).toBeInTheDocument()
     expect(document.querySelector('dialog')?.open).toBe(true)
     expect(run).toHaveBeenCalledTimes(1)
   })
@@ -745,7 +753,11 @@ describe('Estou travada dialog lifecycle and selection', () => {
     const run = vi.fn(async () => completed())
     const user = userEvent.setup()
     render(
-      <AuthProvider skipBootstrap client={authClient} initialSession={session()}>
+      <AuthProvider
+        skipBootstrap
+        client={authClient}
+        initialSession={session()}
+      >
         <PomodoroProvider>
           <ParentUnlockHarness run={run} />
         </PomodoroProvider>
@@ -773,7 +785,11 @@ describe('Estou travada dialog lifecycle and selection', () => {
     const run = vi.fn(async () => completed())
     const user = userEvent.setup()
     render(
-      <AuthProvider skipBootstrap client={authClient} initialSession={session()}>
+      <AuthProvider
+        skipBootstrap
+        client={authClient}
+        initialSession={session()}
+      >
         <PomodoroProvider>
           <ParentUnlockHarness run={run} />
         </PomodoroProvider>

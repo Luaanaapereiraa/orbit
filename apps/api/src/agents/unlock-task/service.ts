@@ -386,6 +386,7 @@ export class UnlockTaskService {
     context.validatedPlanHash = null
     context.savedPlanId = null
     context.protocol = []
+    context.cancelled = false
 
     const plan = buildFallbackPlan(context.request)
     readTrustedTaskContext(context)

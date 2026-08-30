@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { authenticate } from '../auth/authenticate.js'
+import { AppError } from '../errors/app-error.js'
 import {
   apiErrorResponseSchema,
   meResponseSchema,
@@ -24,7 +25,7 @@ export async function registerMeRoute(app: FastifyInstance) {
       const user = request.authUser
 
       if (!user) {
-        throw new Error('Missing auth context')
+        throw AppError.unauthorized()
       }
 
       return {

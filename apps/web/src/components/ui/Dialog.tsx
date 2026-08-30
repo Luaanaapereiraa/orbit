@@ -90,14 +90,14 @@ export function Dialog({
       return
     }
 
-    const dialog = dialogRef.current
-    if (!dialog) {
+    const host = dialogRef.current
+    if (!host) {
       return
     }
 
-    function focusUsefulControl() {
-      const marked = dialog.querySelector<HTMLElement>('[data-initial-focus]')
-      const body = dialog.querySelector<HTMLElement>('[data-dialog-body]')
+    function focusUsefulControl(node: HTMLDialogElement) {
+      const marked = node.querySelector<HTMLElement>('[data-initial-focus]')
+      const body = node.querySelector<HTMLElement>('[data-dialog-body]')
       const firstUseful =
         marked ??
         body?.querySelector<HTMLElement>(
@@ -109,8 +109,10 @@ export function Dialog({
       }
     }
 
-    focusUsefulControl()
-    const frame = window.requestAnimationFrame(focusUsefulControl)
+    focusUsefulControl(host)
+    const frame = window.requestAnimationFrame(() => {
+      focusUsefulControl(host)
+    })
     return () => {
       window.cancelAnimationFrame(frame)
     }

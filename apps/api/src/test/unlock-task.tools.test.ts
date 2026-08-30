@@ -200,4 +200,33 @@ describe('unlock-task tools and protocol', () => {
       }),
     ).toBeNull()
   })
+
+  it('persists a fallback plan after the agent run was cancelled', async () => {
+    const { context } = contextWithRepo()
+    const started = await context.repository.startRun({
+      userId: 'user-1',
+      clientRequestId: validUnlockRequest().clientRequestId,
+      blockageReason: 'dont_know_where_to_start',
+      promptVersion: 'unlock-v1',
+      dailyLimit: 5,
+    })
+    if (started.kind !== 'created') {
+      throw new Error('expected created run')
+    }
+    context.runId = started.run.id
+    context.cancelled = true
+    readTrustedTaskContext(context)
+    const plan = validUnlockPlan()
+    applyValidatedPlan(context, plan)
+    const claimed = await context.repository.beginFallback({
+      runId: context.runId,
+      userId: 'user-1',
+    })
+    expect(claimed.kind).toBe('fallback_claimed')
+    const saved = await saveValidatedUnlockPlan(context, plan, 'fallback')
+    expect(saved.saved).toBe(true)
+    if (saved.saved) {
+      expect(saved.plan).toEqual(plan)
+    }
+  })
 })

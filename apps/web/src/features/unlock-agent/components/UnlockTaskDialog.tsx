@@ -288,8 +288,7 @@ export function UnlockTaskDialog({
         return
       }
     } else {
-      const target =
-        tasks.find((task) => task.id === submitted.taskId) ?? null
+      const target = tasks.find((task) => task.id === submitted.taskId) ?? null
       if (!target || !canRequestUnlock(target)) {
         setApplyError(STALE_TASK_MESSAGE)
         releaseFocusStart()
