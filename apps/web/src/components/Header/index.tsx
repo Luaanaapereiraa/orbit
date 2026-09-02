@@ -11,6 +11,7 @@ import {
   Sun,
   Timer,
 } from '@phosphor-icons/react'
+import { useAuth } from '../../contexts/AuthContext'
 import { usePomodoro } from '../../contexts/PomodoroContext'
 import { APP_NAME, APP_TAGLINE } from '../../lib/brand'
 import { cn } from '../../lib/cn'
@@ -34,8 +35,10 @@ function isActivePath(pathname: string | null, href: string, end: boolean) {
 
 export function Header() {
   const pathname = usePathname()
+  const { session, isLoading } = useAuth()
   const { settings, updateSettings } = usePomodoro()
   const isDark = settings.theme === 'dark'
+  const showSignIn = !isLoading && !session
 
   return (
     <header className="flex items-center justify-between gap-4">
@@ -73,14 +76,24 @@ export function Header() {
         ))}
       </nav>
 
-      <button
-        type="button"
-        onClick={() => updateSettings({ theme: isDark ? 'light' : 'dark' })}
-        className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition hover:bg-line hover:text-ink focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none dark:text-muted-dark dark:hover:bg-line-dark dark:hover:text-ink-dark"
-        aria-label={isDark ? 'Ativar tema claro' : 'Ativar tema escuro'}
-      >
-        {isDark ? <Sun size={20} /> : <Moon size={20} />}
-      </button>
+      <div className="flex items-center gap-1 sm:gap-2">
+        {showSignIn ? (
+          <Link
+            href="/login"
+            className="flex h-11 items-center rounded-xl px-3 text-sm font-bold text-brand-strong transition hover:bg-line focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none dark:hover:bg-line-dark"
+          >
+            Entrar
+          </Link>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => updateSettings({ theme: isDark ? 'light' : 'dark' })}
+          className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition hover:bg-line hover:text-ink focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none dark:text-muted-dark dark:hover:bg-line-dark dark:hover:text-ink-dark"
+          aria-label={isDark ? 'Ativar tema claro' : 'Ativar tema escuro'}
+        >
+          {isDark ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+      </div>
     </header>
   )
 }

@@ -5,18 +5,23 @@ import type {
 import { createSupabaseBrowserClient as createBrowserSupabase } from '../supabase/client'
 import { isPublicAuthConfigured } from '../public-env'
 import { createAccessTokenReader } from './access-token'
-import type { AuthClient, Session } from './types'
+import { profileFromMetadata } from './profile'
+import type { AuthClient, Session, SignUpProfile } from './types'
 
 function sessionFrom(session: SupabaseSession | null): Session | null {
   if (!session?.access_token || !session.user?.id) {
     return null
   }
 
+  const profile = profileFromMetadata(session.user.user_metadata)
+
   return {
     accessToken: session.access_token,
     user: {
       id: session.user.id,
       email: session.user.email ?? null,
+      displayName: profile.displayName,
+      craft: profile.craft,
     },
   }
 }
@@ -29,6 +34,18 @@ function tokenSessionFrom(session: SupabaseSession | null) {
     accessToken: session.access_token,
     expiresAt: session.expires_at ?? null,
   }
+}
+
+function authRedirectTo(type?: 'recovery') {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  const url = new URL('/auth/callback', window.location.origin)
+  if (type === 'recovery') {
+    url.searchParams.set('type', 'recovery')
+  }
+  return url.toString()
 }
 
 export function createSupabaseBrowserClient(): AuthClient | null {
@@ -65,20 +82,55 @@ export function createSupabaseBrowserClient(): AuthClient | null {
       }
       return sessionFrom(data.session)
     },
-    async signInWithEmail(email) {
-      const redirectTo =
-        typeof window === 'undefined'
-          ? undefined
-          : `${window.location.origin}/auth/callback`
-      const { error } = await client.auth.signInWithOtp({
+    async signInWithPassword(email, password) {
+      const { error } = await client.auth.signInWithPassword({
         email,
+        password,
+      })
+      if (error) {
+        throw new Error('Não foi possível entrar. Confira o e-mail e a senha.')
+      }
+    },
+    async signUpWithPassword(email, password, profile: SignUpProfile) {
+      const { data, error } = await client.auth.signUp({
+        email,
+        password,
         options: {
-          emailRedirectTo: redirectTo,
-          shouldCreateUser: true,
+          emailRedirectTo: authRedirectTo(),
+          data: {
+            display_name: profile.displayName,
+            craft: profile.craft,
+          },
         },
       })
       if (error) {
-        throw new Error('Não foi possível enviar o link de acesso.')
+        throw new Error('Não foi possível criar a conta. Tente de novo.')
+      }
+      return { needsEmailConfirmation: !data.session }
+    },
+    async signInWithGoogle() {
+      const { error } = await client.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: authRedirectTo(),
+        },
+      })
+      if (error) {
+        throw new Error('Não foi possível continuar com o Google.')
+      }
+    },
+    async resetPasswordForEmail(email) {
+      const { error } = await client.auth.resetPasswordForEmail(email, {
+        redirectTo: authRedirectTo('recovery'),
+      })
+      if (error) {
+        throw new Error('Não foi possível enviar o e-mail de recuperação.')
+      }
+    },
+    async updatePassword(password) {
+      const { error } = await client.auth.updateUser({ password })
+      if (error) {
+        throw new Error('Não foi possível atualizar a senha.')
       }
     },
     async signOut() {

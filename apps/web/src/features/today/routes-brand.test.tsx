@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Header, BottomNav } from '../../components/Header'
+import { AuthProvider } from '../../contexts/AuthContext'
 import { PomodoroProvider } from '../../contexts/PomodoroContext'
 import { Home } from '../home/Home'
 import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE } from '../../lib/brand'
@@ -99,6 +100,71 @@ describe('brand and routes', () => {
     expect(
       screen.getAllByRole('link', { name: 'Configurações' })[0],
     ).toHaveAttribute('href', '/settings')
+    expect(screen.getByRole('link', { name: 'Entrar' })).toHaveAttribute(
+      'href',
+      '/login',
+    )
+  })
+
+  it('hides the header sign-in link when there is a session', async () => {
+    render(
+      <AuthProvider
+        skipBootstrap
+        client={{
+          async getSession() {
+            return {
+              accessToken: 'user-jwt',
+              user: {
+                id: 'user-1',
+                email: 'a@b.c',
+                displayName: 'Ana',
+                craft: 'engineering',
+              },
+            }
+          },
+          async signInWithPassword() {
+            return undefined
+          },
+          async signUpWithPassword() {
+            return { needsEmailConfirmation: false }
+          },
+          async signInWithGoogle() {
+            return undefined
+          },
+          async resetPasswordForEmail() {
+            return undefined
+          },
+          async updatePassword() {
+            return undefined
+          },
+          async signOut() {
+            return undefined
+          },
+          async getAccessToken() {
+            return 'user-jwt'
+          },
+          onAuthStateChange() {
+            return () => undefined
+          },
+        }}
+        initialSession={{
+          accessToken: 'user-jwt',
+          user: {
+            id: 'user-1',
+            email: 'a@b.c',
+            displayName: 'Ana',
+            craft: 'engineering',
+          },
+        }}
+      >
+        <PomodoroProvider>
+          <Header />
+        </PomodoroProvider>
+      </AuthProvider>,
+    )
+
+    expect(await screen.findByAltText(APP_NAME)).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Entrar' })).toBeNull()
   })
 
   it('publishes DestravAI in the web manifest', () => {

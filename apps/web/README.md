@@ -21,14 +21,14 @@ Não coloque `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY` nem service role neste app.
 
 ## Autenticação
 
-V1 usa magic link / OTP de e-mail do Supabase.
+V1 usa e-mail/senha e Google no Supabase.
 
-1. Em Authentication, habilite Email e o template de magic link.
-2. Site URL: origem da web (por exemplo `http://localhost:3000`).
-3. Redirect URLs: `http://localhost:3000/auth/callback`.
-4. A pessoa informa o e-mail em `/login` e recebe o link.
-5. `/auth/callback` troca o código por sessão e volta para a Tela Hoje.
-6. O retorno é só `/`. Qualquer outro `next` é ignorado.
+1. Em Authentication → Email, habilite senha (não só magic link) e o template de confirmação.
+2. Em Authentication → Google, configure Client ID e Secret do Google Cloud.
+3. Site URL: origem da web (por exemplo `http://localhost:3000`).
+4. Redirect URLs: `http://localhost:3000/auth/callback` e `http://localhost:3000/auth/callback?type=recovery`.
+5. Em `/login` a pessoa entra, cria conta (nome, área, e-mail e senha) ou continua com Google. “Esqueci a senha” envia o e-mail de recuperação.
+6. `/auth/callback` troca o código por sessão. O retorno é `/`, ou `/login?reset=1` quando `type=recovery`. Qualquer outro `next` é ignorado.
 
 O planner funciona sem login. Sair da conta não apaga tarefas locais.
 

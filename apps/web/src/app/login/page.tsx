@@ -4,30 +4,32 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { Card } from '../../components/ui/Card'
-import { MagicLinkForm } from '../../features/auth/MagicLinkForm'
+import { AuthCredentialsForm } from '../../features/auth/AuthCredentialsForm'
 
 function LoginContent() {
   const params = useSearchParams()
   const error = params?.get('error')
+  const resetMode = params?.get('reset') === '1'
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
+    <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-10">
       <Card className="space-y-5">
         <div>
           <h1 className="text-2xl font-bold text-ink dark:text-ink-dark">
-            Entrar
+            {resetMode ? 'Redefinir senha' : 'Acesso'}
           </h1>
           <p className="mt-2 text-sm text-muted dark:text-muted-dark">
-            Entre para receber um próximo passo criado para esta tarefa. Seu
-            planner continua funcionando normalmente sem login.
+            {resetMode
+              ? 'Defina uma nova senha para esta conta. O planner continua local.'
+              : 'Entre ou crie uma conta para usar o Travei.'}
           </p>
         </div>
         {error ? (
           <p className="text-sm text-danger" role="alert">
-            Não foi possível concluir o acesso. Peça um novo link.
+            Não foi possível concluir o acesso. Tente de novo.
           </p>
         ) : null}
-        <MagicLinkForm />
+        <AuthCredentialsForm resetMode={resetMode} />
         <Link
           href="/"
           className="inline-flex h-11 items-center text-sm font-bold text-brand-strong focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"

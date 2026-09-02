@@ -22,8 +22,13 @@ export function Settings() {
         {session && user ? (
           <div className="space-y-3">
             <p className="text-sm text-muted dark:text-muted-dark">
-              Você entrou como {user.email ?? 'conta autenticada'}. O acesso
-              autentica o pedido de ajuda; a web não grava planos no Supabase.
+              Você entrou como{' '}
+              {user.displayName
+                ? `${user.displayName} (${user.email ?? 'conta autenticada'})`
+                : user.email ?? 'conta autenticada'}
+              {user.craft ? ` · ${user.craft}` : ''}. O
+              acesso autentica o pedido de ajuda; a web não grava planos no
+              Supabase.
             </p>
             <Button
               variant="secondary"
@@ -37,8 +42,7 @@ export function Settings() {
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-muted dark:text-muted-dark">
-              Entre para usar Travei. O planner continua local, sem
-              login.
+              Entre para usar Travei. O planner continua local, sem login.
             </p>
             <Link
               href="/login"

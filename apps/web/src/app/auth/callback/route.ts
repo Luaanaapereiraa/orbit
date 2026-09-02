@@ -10,13 +10,22 @@ export const dynamic = 'force-dynamic'
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
-function callbackRedirect(
-  request: NextRequest,
-  path: '/login?error=callback' | '/',
-) {
+type CallbackPath = '/login?error=callback' | '/login?reset=1' | '/'
+
+function callbackRedirect(request: NextRequest, path: CallbackPath) {
   return NextResponse.redirect(new URL(path, request.url), {
     headers: NO_STORE,
   })
+}
+
+function successPath(
+  request: NextRequest,
+): Exclude<CallbackPath, '/login?error=callback'> {
+  if (request.nextUrl.searchParams.get('type') === 'recovery') {
+    return '/login?reset=1'
+  }
+
+  return '/'
 }
 
 export async function GET(request: NextRequest) {
@@ -29,7 +38,7 @@ export async function GET(request: NextRequest) {
     return callbackRedirect(request, '/login?error=callback')
   }
 
-  const redirectResponse = callbackRedirect(request, '/')
+  const redirectResponse = callbackRedirect(request, successPath(request))
 
   const supabase = createServerClient(
     readPublicSupabaseUrl(),

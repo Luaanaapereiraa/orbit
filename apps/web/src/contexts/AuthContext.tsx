@@ -16,17 +16,27 @@ import type {
   AuthClient,
   AuthContextValue,
   Session,
+  SignUpProfile,
+  SignUpResult,
 } from '../lib/auth/types'
 import { isPublicAuthConfigured } from '../lib/public-env'
+
+const AUTH_NOT_CONFIGURED = 'A autenticação ainda não está configurada.'
+
+async function notConfigured(): Promise<never> {
+  throw new Error(AUTH_NOT_CONFIGURED)
+}
 
 const fallbackAuth: AuthContextValue = {
   user: null,
   session: null,
   isLoading: false,
   configured: false,
-  async signInWithEmail() {
-    throw new Error('A autenticação ainda não está configurada.')
-  },
+  signInWithPassword: notConfigured,
+  signUpWithPassword: notConfigured,
+  signInWithGoogle: notConfigured,
+  resetPasswordForEmail: notConfigured,
+  updatePassword: notConfigured,
   async signOut() {
     return undefined
   },
@@ -117,14 +127,47 @@ export function AuthProvider({
     }
   }, [authClient, skipBootstrap])
 
-  const signInWithEmail = useCallback(
-    async (email: string) => {
-      if (!authClient) {
-        throw new Error('A autenticação ainda não está configurada.')
-      }
-      await authClient.signInWithEmail(email)
+  const requireClient = useCallback(() => {
+    if (!authClient) {
+      throw new Error(AUTH_NOT_CONFIGURED)
+    }
+    return authClient
+  }, [authClient])
+
+  const signInWithPassword = useCallback(
+    async (email: string, password: string) => {
+      await requireClient().signInWithPassword(email, password)
     },
-    [authClient],
+    [requireClient],
+  )
+
+  const signUpWithPassword = useCallback(
+    async (
+      email: string,
+      password: string,
+      profile: SignUpProfile,
+    ): Promise<SignUpResult> => {
+      return requireClient().signUpWithPassword(email, password, profile)
+    },
+    [requireClient],
+  )
+
+  const signInWithGoogle = useCallback(async () => {
+    await requireClient().signInWithGoogle()
+  }, [requireClient])
+
+  const resetPasswordForEmail = useCallback(
+    async (email: string) => {
+      await requireClient().resetPasswordForEmail(email)
+    },
+    [requireClient],
+  )
+
+  const updatePassword = useCallback(
+    async (password: string) => {
+      await requireClient().updatePassword(password)
+    },
+    [requireClient],
   )
 
   const signOut = useCallback(async () => {
@@ -150,11 +193,26 @@ export function AuthProvider({
       session,
       isLoading,
       configured,
-      signInWithEmail,
+      signInWithPassword,
+      signUpWithPassword,
+      signInWithGoogle,
+      resetPasswordForEmail,
+      updatePassword,
       signOut,
       getAccessToken,
     }),
-    [configured, getAccessToken, isLoading, session, signInWithEmail, signOut],
+    [
+      configured,
+      getAccessToken,
+      isLoading,
+      resetPasswordForEmail,
+      session,
+      signInWithGoogle,
+      signInWithPassword,
+      signOut,
+      signUpWithPassword,
+      updatePassword,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

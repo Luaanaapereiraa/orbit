@@ -62,7 +62,12 @@ const completed = (
 function session(): Session {
   return {
     accessToken: 'user-jwt',
-    user: { id: 'user-1', email: 'a@b.c' },
+    user: {
+      id: 'user-1',
+      email: 'a@b.c',
+      displayName: 'Ana',
+      craft: 'engineering',
+    },
   }
 }
 
@@ -70,7 +75,19 @@ const authClient: AuthClient = {
   async getSession() {
     return session()
   },
-  async signInWithEmail() {
+  async signInWithPassword() {
+    return undefined
+  },
+  async signUpWithPassword() {
+    return { needsEmailConfirmation: false }
+  },
+  async signInWithGoogle() {
+    return undefined
+  },
+  async resetPasswordForEmail() {
+    return undefined
+  },
+  async updatePassword() {
     return undefined
   },
   async signOut() {

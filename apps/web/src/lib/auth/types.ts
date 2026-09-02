@@ -1,11 +1,21 @@
+import type { Craft, SignUpProfile } from './profile'
+
+export type { Craft, SignUpProfile }
+
 export type User = {
   id: string
   email: string | null
+  displayName: string | null
+  craft: Craft | null
 }
 
 export type Session = {
   accessToken: string
   user: User
+}
+
+export type SignUpResult = {
+  needsEmailConfirmation: boolean
 }
 
 export type AuthChangeEvent =
@@ -14,11 +24,20 @@ export type AuthChangeEvent =
   | 'SIGNED_OUT'
   | 'TOKEN_REFRESHED'
   | 'USER_UPDATED'
+  | 'PASSWORD_RECOVERY'
   | string
 
 export interface AuthClient {
   getSession(): Promise<Session | null>
-  signInWithEmail(email: string): Promise<void>
+  signInWithPassword(email: string, password: string): Promise<void>
+  signUpWithPassword(
+    email: string,
+    password: string,
+    profile: SignUpProfile,
+  ): Promise<SignUpResult>
+  signInWithGoogle(): Promise<void>
+  resetPasswordForEmail(email: string): Promise<void>
+  updatePassword(password: string): Promise<void>
   signOut(): Promise<void>
   getAccessToken(): Promise<string | null>
   onAuthStateChange(
@@ -31,7 +50,15 @@ export type AuthContextValue = {
   session: Session | null
   isLoading: boolean
   configured: boolean
-  signInWithEmail(email: string): Promise<void>
+  signInWithPassword(email: string, password: string): Promise<void>
+  signUpWithPassword(
+    email: string,
+    password: string,
+    profile: SignUpProfile,
+  ): Promise<SignUpResult>
+  signInWithGoogle(): Promise<void>
+  resetPasswordForEmail(email: string): Promise<void>
+  updatePassword(password: string): Promise<void>
   signOut(): Promise<void>
   getAccessToken(): Promise<string | null>
 }

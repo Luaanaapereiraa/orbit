@@ -80,6 +80,24 @@ describe('auth callback', () => {
     expect(exchangeCodeForSession).toHaveBeenCalledWith('valid-code')
   })
 
+  it('sends a recovery code to the password reset screen', async () => {
+    exchangeCodeForSession.mockResolvedValue({ error: null })
+    const { GET } = await import('./route')
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/auth/callback?code=recovery-code&type=recovery',
+      ),
+    )
+
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/login?reset=1',
+    )
+    expect(response.cookies.get('sb-access-token')?.value).toBe(
+      'session-cookie',
+    )
+    expect(exchangeCodeForSession).toHaveBeenCalledWith('recovery-code')
+  })
+
   it('returns a safe error for an invalid code', async () => {
     exchangeCodeForSession.mockResolvedValue({ error: { message: 'invalid' } })
     const { GET } = await import('./route')
