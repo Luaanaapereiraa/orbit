@@ -1,0 +1,43 @@
+{
+  "name": "@destravai/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc --noEmit && esbuild src/server.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/server.js --external:fastify --external:@fastify/cors --external:@fastify/helmet --external:@fastify/rate-limit --external:@fastify/swagger --external:@fastify/swagger-ui --external:jose --external:dotenv --external:zod --external:@openai/agents --external:@supabase/supabase-js --external:openai",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext ts --report-unused-disable-directives --max-warnings 0",
+    "eval:agent": "tsx src/agents/unlock-task/evals/runner.ts"
+  },
+  "dependencies": {
+    "@destravai/contracts": "*",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/swagger": "^9.5.2",
+    "@fastify/swagger-ui": "^5.2.3",
+    "@openai/agents": "^0.3.9",
+    "@supabase/supabase-js": "^2.112.4",
+    "dotenv": "^16.4.7",
+    "fastify": "^5.3.3",
+    "jose": "^5.10.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "@typescript-eslint/eslint-plugin": "^5.60.1",
+    "@typescript-eslint/parser": "^5.60.1",
+    "esbuild": "^0.25.0",
+    "eslint": "^8.43.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.0.2",
+    "vitest": "^4.1.11"
+  }
+}

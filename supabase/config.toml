@@ -1,0 +1,13 @@
+# Local placeholder. Do not store secrets in this file.
+# Validate with the Supabase CLI in a later step (`supabase start` / `db push` are not run from this repo yet).
+
+project_id = "destravai-placeholder"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 15
