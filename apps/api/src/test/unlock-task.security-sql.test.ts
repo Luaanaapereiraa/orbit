@@ -12,8 +12,17 @@ const MIGRATIONS = [
   '20260829120000_unlock_task_backend_authority.sql',
 ].map((file) => resolve(MIGRATIONS_DIR, file))
 
+const TRIGGER_REVOKE_MIGRATION = resolve(
+  MIGRATIONS_DIR,
+  '20260831220000_revoke_trigger_function_execute.sql',
+)
+
 function readLatest() {
   return readFileSync(MIGRATIONS[MIGRATIONS.length - 1], 'utf8')
+}
+
+function stripSqlComments(sql: string) {
+  return sql.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--[^\n]*/g, '')
 }
 
 function walkSourceFiles(dir: string, files: string[] = []) {
@@ -119,6 +128,104 @@ describe('unlock-task SQL security migration', () => {
     const sql = readLatest()
     const executeToAuthenticated = /GRANT EXECUTE[\s\S]{0,80}TO authenticated/g
     expect(sql.match(executeToAuthenticated)).toBeNull()
+  })
+})
+
+describe('unlock-task trigger function execute revoke', () => {
+  it('lists the corrective migration after the five applied files', () => {
+    const files = readdirSync(MIGRATIONS_DIR)
+      .filter((name) => name.endsWith('.sql'))
+      .sort()
+    expect(files).toEqual([
+      '20260828120000_agent_runs.sql',
+      '20260828120100_unlock_plans.sql',
+      '20260828180000_unlock_task_quota.sql',
+      '20260828220000_unlock_task_security.sql',
+      '20260829120000_unlock_task_backend_authority.sql',
+      '20260831220000_revoke_trigger_function_execute.sql',
+    ])
+  })
+
+  it('revokes execute on the three trigger signatures from PUBLIC, anon, authenticated and service_role', () => {
+    const sql = stripSqlComments(readFileSync(TRIGGER_REVOKE_MIGRATION, 'utf8'))
+    expect(sql).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.touch_agent_runs_updated_at\(\)\s+FROM PUBLIC, anon, authenticated, service_role;/,
+    )
+    expect(sql).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.prevent_agent_run_identity_change\(\)\s+FROM PUBLIC, anon, authenticated, service_role;/,
+    )
+    expect(sql).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.enforce_unlock_plan_owner\(\)\s+FROM PUBLIC, anon, authenticated, service_role;/,
+    )
+  })
+
+  it('hardens search_path only on the trigger function that lacked it', () => {
+    const sql = stripSqlComments(readFileSync(TRIGGER_REVOKE_MIGRATION, 'utf8'))
+    expect(sql).toMatch(
+      /ALTER FUNCTION public\.touch_agent_runs_updated_at\(\)\s+SET search_path = pg_catalog;/,
+    )
+    expect(sql).not.toMatch(/ALTER FUNCTION public\.prevent_agent_run_identity_change/)
+    expect(sql).not.toMatch(/ALTER FUNCTION public\.enforce_unlock_plan_owner/)
+  })
+
+  it('does not change tables, policies, RPCs, quota, lease or contracts', () => {
+    const sql = stripSqlComments(readFileSync(TRIGGER_REVOKE_MIGRATION, 'utf8'))
+    expect(sql).not.toMatch(/CREATE\s+TABLE/)
+    expect(sql).not.toMatch(/ALTER\s+TABLE/)
+    expect(sql).not.toMatch(/DROP\s+TABLE/)
+    expect(sql).not.toMatch(/CREATE\s+POLICY/)
+    expect(sql).not.toMatch(/DROP\s+POLICY/)
+    expect(sql).not.toMatch(/CREATE\s+OR\s+REPLACE\s+FUNCTION/)
+    expect(sql).not.toMatch(/DROP\s+FUNCTION/)
+    expect(sql).not.toMatch(/DROP\s+TRIGGER/)
+    expect(sql).not.toMatch(/CREATE\s+TRIGGER/)
+    expect(sql).not.toMatch(/GRANT\s+/)
+    expect(sql).not.toMatch(/agent_quota_settings/)
+    expect(sql).not.toMatch(/daily_limit/)
+    expect(sql).not.toMatch(/lease_seconds/)
+    expect(sql).not.toMatch(/start_unlock_agent_run/)
+    expect(sql).not.toMatch(/save_unlock_agent_plan/)
+    expect(sql).not.toMatch(/begin_unlock_fallback/)
+    expect(sql).not.toMatch(/finish_unlock_agent_run/)
+  })
+
+  it('keeps the original trigger bindings in earlier migrations', () => {
+    const quota = readFileSync(MIGRATIONS[2], 'utf8')
+    const security = readFileSync(MIGRATIONS[3], 'utf8')
+    expect(quota).toMatch(
+      /CREATE TRIGGER agent_runs_touch_updated_at\s+BEFORE UPDATE ON public\.agent_runs[\s\S]*EXECUTE FUNCTION public\.touch_agent_runs_updated_at\(\)/,
+    )
+    expect(security).toMatch(
+      /CREATE TRIGGER agent_runs_identity_immutable\s+BEFORE UPDATE ON public\.agent_runs[\s\S]*EXECUTE FUNCTION public\.prevent_agent_run_identity_change\(\)/,
+    )
+    expect(security).toMatch(
+      /CREATE TRIGGER unlock_plans_owner_guard\s+BEFORE INSERT OR UPDATE ON public\.unlock_plans[\s\S]*EXECUTE FUNCTION public\.enforce_unlock_plan_owner\(\)/,
+    )
+    expect(stripSqlComments(readFileSync(TRIGGER_REVOKE_MIGRATION, 'utf8'))).not.toMatch(
+      /DROP\s+TRIGGER/,
+    )
+  })
+
+  it('leaves the four final RPCs granted only to service_role in the authority migration', () => {
+    const sql = readLatest()
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.start_unlock_agent_run\(uuid, uuid, text, text\) TO service_role/,
+    )
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.save_unlock_agent_plan\(uuid, uuid, jsonb, text\) TO service_role/,
+    )
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.begin_unlock_fallback\(uuid, uuid\) TO service_role/,
+    )
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.finish_unlock_agent_run\(uuid, uuid, text, text, jsonb, text, text, integer, integer, integer, integer, text, jsonb\) TO service_role/,
+    )
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.start_unlock_agent_run\(uuid, uuid, text, text\) FROM anon, authenticated/,
+    )
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.insert_unlock_plan_locked\(public\.agent_runs, jsonb\) FROM anon, authenticated, service_role/,
+    )
   })
 })
 
