@@ -39,7 +39,7 @@ As rotas ficam no App Router (`src/app/(product)/`). O grupo `(product)` não al
 
 ### `apps/web` (`@destravai/web`)
 
-Aplicação web: interface, App Router, persistência em `localStorage`, tema, sons, notificações do navegador, PWA e o `PomodoroContext` (React). Consome o domínio via `@destravai/core`. O fluxo “Estou travada” autentica com magic link, passa pelo proxy `POST /api/agents/unlock-task/runs` e só aplica o plano com confirmação explícita. Detalhes em `apps/web/README.md`.
+Aplicação web: interface, App Router, persistência em `localStorage`, tema, sons, notificações do navegador, PWA e o `PomodoroContext` (React). Consome o domínio via `@destravai/core`. O fluxo “Travei” autentica com magic link, passa pelo proxy `POST /api/agents/unlock-task/runs` e só aplica o plano com confirmação explícita. Detalhes em `apps/web/README.md`.
 
 Client Components são usados só onde há hooks, contexto, eventos, `usePathname` ou APIs do navegador. O root layout, metadata e o layout estrutural das rotas permanecem Server Components.
 

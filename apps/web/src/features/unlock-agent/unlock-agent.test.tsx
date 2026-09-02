@@ -139,7 +139,7 @@ function renderDialog(
   )
 }
 
-describe('Estou travada flow', () => {
+describe('Travei flow', () => {
   afterEach(() => {
     cleanup()
     localStorage.clear()
@@ -161,7 +161,7 @@ describe('Estou travada flow', () => {
 
     await user.click(
       (
-        await screen.findAllByRole('button', { name: 'Estou travada' })
+        await screen.findAllByRole('button', { name: 'Travei' })
       )[0],
     )
     expect(
@@ -409,7 +409,7 @@ function renderHarness(
   )
 }
 
-describe('Estou travada apply identity', () => {
+describe('Travei apply identity', () => {
   afterEach(() => {
     cleanup()
     localStorage.clear()
@@ -685,7 +685,7 @@ function ParentUnlockHarness({
   )
 }
 
-describe('Estou travada dialog lifecycle and selection', () => {
+describe('Travei dialog lifecycle and selection', () => {
   beforeEach(() => {
     installNativeDialog()
   })

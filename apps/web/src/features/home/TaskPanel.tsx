@@ -88,7 +88,7 @@ export function TaskPanel({ onUnlock }: TaskPanelProps) {
                   onClick={() => onUnlock(task)}
                   className="rounded-lg px-2 py-2 text-xs font-bold text-brand hover:bg-brand/10"
                 >
-                  Estou travada
+                  Travei
                 </button>
                 <button
                   type="button"

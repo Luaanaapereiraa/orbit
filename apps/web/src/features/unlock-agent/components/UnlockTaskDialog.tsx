@@ -384,7 +384,7 @@ export function UnlockTaskDialog({
           ? 'Usar este plano e começar o foco?'
           : confirm === 'apply'
           ? 'Usar este plano?'
-          : 'Estou travada'
+          : 'Travei'
       }
       description={
         confirm

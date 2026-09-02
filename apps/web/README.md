@@ -1,6 +1,6 @@
 # @destravai/web
 
-Aplicação Next.js do DestravAI. O planner e o timer continuam locais. O agente “Estou travada” só entra depois do login e nunca altera a tarefa sozinho.
+Aplicação Next.js do DestravAI. O planner e o timer continuam locais. O agente “Travei” só entra depois do login e nunca altera a tarefa sozinho.
 
 ## Variáveis
 
@@ -32,7 +32,7 @@ V1 usa magic link / OTP de e-mail do Supabase.
 
 O planner funciona sem login. Sair da conta não apaga tarefas locais.
 
-## Estou travada
+## Travei
 
 1. Na Tela Hoje, use o botão global ou o de uma tarefa.
 2. A web chama só `POST /api/agents/unlock-task/runs`.

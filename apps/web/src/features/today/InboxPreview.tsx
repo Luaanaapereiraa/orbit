@@ -120,7 +120,7 @@ export function InboxPreview({ dateKey, onEdit, onUnlock }: InboxPreviewProps) {
                   className="h-11"
                   onClick={() => onUnlock(task)}
                 >
-                  Estou travada
+                  Travei
                 </Button>
                 <Button
                   variant="ghost"

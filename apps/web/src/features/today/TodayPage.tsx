@@ -55,7 +55,7 @@ export function TodayPage() {
             setUnlockOpen(true)
           }}
         >
-          Estou travada
+          Travei
         </Button>
       </header>
 

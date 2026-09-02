@@ -22,7 +22,7 @@ export function Settings() {
         {session && user ? (
           <div className="space-y-3">
             <p className="text-sm text-muted dark:text-muted-dark">
-              Conectada como {user.email ?? 'conta autenticada'}. O acesso
+              Você entrou como {user.email ?? 'conta autenticada'}. O acesso
               autentica o pedido de ajuda; a web não grava planos no Supabase.
             </p>
             <Button
@@ -37,7 +37,7 @@ export function Settings() {
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-muted dark:text-muted-dark">
-              Entre para usar Estou travada. O planner continua local, sem
+              Entre para usar Travei. O planner continua local, sem
               login.
             </p>
             <Link

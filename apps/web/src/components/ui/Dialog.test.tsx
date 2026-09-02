@@ -17,7 +17,7 @@ function Harness({
   return (
     <Dialog
       open={open}
-      title="Estou travada"
+      title="Travei"
       focusKey={focusKey}
       onClose={() => {
         onClose?.()
@@ -43,7 +43,7 @@ describe('Dialog native lifecycle', () => {
   it('does not call onClose or close the dialog when focusKey changes', () => {
     const onClose = vi.fn()
     const { rerender } = render(
-      <Dialog open title="Estou travada" focusKey="form" onClose={onClose}>
+      <Dialog open title="Travei" focusKey="form" onClose={onClose}>
         <button type="button" data-initial-focus="">
           Primeiro
         </button>
@@ -56,7 +56,7 @@ describe('Dialog native lifecycle', () => {
     rerender(
       <Dialog
         open
-        title="Estou travada"
+        title="Travei"
         focusKey="submitting"
         onClose={onClose}
       >
@@ -74,7 +74,7 @@ describe('Dialog native lifecycle', () => {
   it('moves focus to the marked control without dismissing', async () => {
     const onClose = vi.fn()
     const { rerender } = render(
-      <Dialog open title="Estou travada" focusKey="form" onClose={onClose}>
+      <Dialog open title="Travei" focusKey="form" onClose={onClose}>
         <button type="button">Outro</button>
         <button type="button" data-initial-focus="">
           Primeiro
@@ -131,13 +131,13 @@ describe('Dialog native lifecycle', () => {
   it('does not call onClose again when the parent sets open=false', () => {
     const onClose = vi.fn()
     const { rerender } = render(
-      <Dialog open title="Estou travada" onClose={onClose}>
+      <Dialog open title="Travei" onClose={onClose}>
         <p>conteudo</p>
       </Dialog>,
     )
 
     rerender(
-      <Dialog open={false} title="Estou travada" onClose={onClose}>
+      <Dialog open={false} title="Travei" onClose={onClose}>
         <p>conteudo</p>
       </Dialog>,
     )
@@ -148,7 +148,7 @@ describe('Dialog native lifecycle', () => {
   it('does not call onClose on unmount', () => {
     const onClose = vi.fn()
     const { unmount } = render(
-      <Dialog open title="Estou travada" onClose={onClose}>
+      <Dialog open title="Travei" onClose={onClose}>
         <p>conteudo</p>
       </Dialog>,
     )

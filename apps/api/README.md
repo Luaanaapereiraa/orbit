@@ -226,7 +226,7 @@ curl -sS http://localhost:3333/v1/agents/unlock-task/runs \
 
 ## Limitações da V1
 
-- Sem UI web, dialog ou botão “Estou travada”.
+- Sem UI web, dialog ou botão “Travei”.
 - O plano **não** é aplicado à tarefa.
 - Sem chat contínuo, memória longa, multiagentes, voz ou Alexa.
 - Sem migração de tarefas do `localStorage`.
